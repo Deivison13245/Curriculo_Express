@@ -300,12 +300,21 @@ export default function App() {
           onImportData={(imported) => {
             setData((d) => ({
               ...d,
+              ...imported,
               name: imported.name || d.name,
               jobTitle: imported.jobTitle || d.jobTitle,
               email: imported.email || d.email,
+              phone: imported.phone || d.phone,
+              city: imported.city || d.city,
+              state: imported.state || d.state,
               summary: imported.summary || d.summary,
+              hardSkills: (imported.hardSkills && imported.hardSkills.length > 0) ? imported.hardSkills : d.hardSkills,
+              softSkills: (imported.softSkills && imported.softSkills.length > 0) ? imported.softSkills : d.softSkills,
+              technologies: (imported.technologies && imported.technologies.length > 0) ? imported.technologies : d.technologies,
+              experience: (imported.experience && imported.experience.length > 0) ? imported.experience : d.experience,
+              education: (imported.education && imported.education.length > 0) ? imported.education : d.education,
             }));
-            addToast('✓ Perfil importado com sucesso!');
+            addToast('✓ Dados do currículo importados com sucesso!');
           }}
         />
       )}

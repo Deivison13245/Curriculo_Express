@@ -84,3 +84,113 @@ export async function callGemini(prompt: string, systemInstruction?: string): Pr
     throw err;
   }
 }
+
+/**
+ * Parser inteligente de currículo em texto usando IA com fallback heurístico
+ */
+export async function parseResumeTextWithAI(rawText: string): Promise<any> {
+  const prompt = `Analise o texto abaixo, que corresponde a um currículo ou perfil profissional, e extraia estritamente os dados reais encontrados no texto em formato JSON.
+ATENÇÃO: NÃO invente dados que não existam no texto. Se um campo não for identificado, retorne string vazia ou array vazio.
+
+Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de markdown adicionais se possível, apenas JSON) com esta estrutura:
+{
+  "name": "Nome completo",
+  "jobTitle": "Cargo pretendido ou atual",
+  "email": "E-mail de contato",
+  "phone": "Telefone",
+  "city": "Cidade",
+  "state": "Sigla do Estado (2 letras, ex: SP)",
+  "summary": "Resumo profissional ou síntese",
+  "hardSkills": ["Habilidade técnica 1", "Habilidade 2"],
+  "softSkills": ["Habilidade comportamental 1"],
+  "technologies": ["Tecnologia ou software 1", "Software 2"],
+  "experience": [
+    {
+      "role": "Cargo",
+      "company": "Empresa",
+      "startDate": "Mês/Ano ou Ano",
+      "endDate": "Mês/Ano ou Presente",
+      "current": false,
+      "description": "Atividades e conquistas"
+    }
+  ],
+  "education": [
+    {
+      "degree": "Grau (ex: Graduação, Ensino Médio, Técnico)",
+      "course": "Curso",
+      "institution": "Instituição",
+      "year": "Ano de conclusão",
+      "period": ""
+    }
+  ]
+}
+
+Texto a ser analisado:
+"""
+${rawText}
+"""`;
+
+  try {
+    const aiResponse = await callGemini(
+      prompt,
+      'Você é um parser especializado em extração de currículos e perfis profissionais para o sistema Curriculo Express. Responda apenas com o JSON estruturado.'
+    );
+
+    // Limpa possíveis blocos ```json ... ```
+    const cleanedJson = aiResponse
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
+    const parsed = JSON.parse(cleanedJson);
+    return parsed;
+  } catch (e) {
+    console.warn('[AIService] Falha ao processar com IA, usando extração heurística local:', e);
+    return parseResumeHeuristic(rawText);
+  }
+}
+
+/**
+ * Extrator local de emergência usando expressões regulares
+ */
+export function parseResumeHeuristic(text: string): any {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  
+  // Email
+  const emailMatch = text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
+  const email = emailMatch ? emailMatch[1] : '';
+
+  // Telefone
+  const phoneMatch = text.match(/(?:\(?\d{2}\)?\s*)?(?:9\s*)?\d{4}[-\s]?\d{4}/);
+  const phone = phoneMatch ? phoneMatch[0].trim() : '';
+
+  // Nome (geralmente a primeira linha de texto não vazia que não seja email nem telefone)
+  let name = '';
+  for (const line of lines) {
+    if (line.length > 2 && line.length < 50 && !line.includes('@') && !/\d{4}/.test(line)) {
+      name = line;
+      break;
+    }
+  }
+
+  // Cargo (segunda linha ou procura por palavras comuns)
+  let jobTitle = '';
+  if (lines.length > 1 && lines[1] !== name && !lines[1].includes('@') && lines[1].length < 60) {
+    jobTitle = lines[1];
+  }
+
+  return {
+    name,
+    jobTitle,
+    email,
+    phone,
+    summary: text.slice(0, 300),
+    hardSkills: [],
+    softSkills: [],
+    technologies: [],
+    experience: [],
+    education: []
+  };
+}
+

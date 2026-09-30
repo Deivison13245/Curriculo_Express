@@ -37,6 +37,15 @@ import {
 } from 'lucide-react';
 import { BRAZIL_STATES, getCitiesForState } from '../data/brazilLocations';
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
 const HARD_SKILLS_SUGGESTIONS = [
   'React', 'Node.js', 'Python', 'TypeScript', 'SQL e Banco de Dados', 'Pacote Office / Excel Avançado', 'Power BI & Dashboards', 'Figma / UI Design', 'Git & GitHub', 'Docker & Nuvem', 'AWS Cloud', 'Metodologias Ágeis (Scrum/Kanban)', 'Java', 'C# / .NET', 'Gestão de Projetos'
 ];
@@ -45,9 +54,40 @@ const SOFT_SKILLS_SUGGESTIONS = [
   'Comunicação Clara e Assertiva', 'Trabalho em Equipe', 'Liderança e Motivação', 'Inteligência Emocional', 'Resolução de Problemas Complexos', 'Pensamento Crítico', 'Adaptabilidade e Flexibilidade', 'Gestão do Tempo e Produtividade', 'Proatividade e Autonomia', 'Negociação e Persuasão', 'Foco em Resultados'
 ];
 
-const TECH_SUGGESTIONS = [
-  'JavaScript', 'TypeScript', 'React.js', 'Next.js', 'Node.js', 'Python', 'Django', 'SQL / PostgreSQL', 'MongoDB', 'Docker', 'Kubernetes', 'AWS', 'Azure', 'Git', 'Linux', 'SAP ERP', 'Salesforce', 'Figma', 'Power BI', 'Excel'
+const TECH_CATEGORIES = [
+  {
+    id: 'office',
+    label: '📊 Office & Produtividade',
+    items: ['Microsoft Excel Avançado', 'Pacote Office Completo', 'Google Planilhas / Workspace', 'PowerPoint para Apresentações', 'Word Corporativo', 'Notion', 'Trello', 'Asana', 'Slack']
+  },
+  {
+    id: 'management',
+    label: '💼 Gestão, ERP & Vendas',
+    items: ['SAP ERP', 'TOTVS Protheus', 'Salesforce CRM', 'HubSpot CRM', 'Power BI & Dashboards', 'RD Station', 'Bling ERP', 'Omie ERP', 'Jira Software']
+  },
+  {
+    id: 'design',
+    label: '🎨 Design & Mídia',
+    items: ['Canva Pro', 'Figma / UI Design', 'Adobe Photoshop', 'Adobe Illustrator', 'CapCut / Vídeo', 'Adobe Premiere Pro', 'InDesign']
+  },
+  {
+    id: 'service',
+    label: '🎧 Atendimento & Suporte',
+    items: ['Zendesk', 'WhatsApp Business', 'Intercom', 'Freshdesk', 'Chatwoot', 'Microsoft Teams', 'Zoom Meeting', 'Telefonia VoIP']
+  },
+  {
+    id: 'operations',
+    label: '🍽️ Operações, PDV & Logística',
+    items: ['Sistemas de PDV / Frente de Caixa', 'Controle de Estoque (PEPS/FIFO)', 'iFood / Totens de Pedidos', 'Boas Práticas ANVISA', 'Sistemas WMS', 'Conferência de Cargas']
+  },
+  {
+    id: 'dev',
+    label: '💻 Programação & Tecnologia',
+    items: ['JavaScript', 'TypeScript', 'React.js', 'Next.js', 'Node.js', 'Python', 'SQL / PostgreSQL', 'Git & GitHub', 'Docker', 'AWS Cloud', 'Java', 'C# / .NET']
+  }
 ];
+
+const TECH_SUGGESTIONS = TECH_CATEGORIES.flatMap((c) => c.items);
 
 const DEGREES = [
   'Ensino Fundamental',
@@ -242,6 +282,8 @@ export default function FormPanel({
   const [customHardSkillInput, setCustomHardSkillInput] = useState('');
   const [customSoftSkillInput, setCustomSoftSkillInput] = useState('');
   const [customTechInput, setCustomTechInput] = useState('');
+  const [isCustomCity, setIsCustomCity] = useState(false);
+  const [techCategoryTab, setTechCategoryTab] = useState('all');
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const projectPdfRef = useRef<HTMLInputElement>(null);
@@ -300,6 +342,7 @@ export default function FormPanel({
 
   // Manipulação de Estado (UF) e Cidade dinâmica
   function handleStateChange(newState: string) {
+    setIsCustomCity(false);
     update({
       state: newState,
       city: '', // limpa cidade ao trocar o estado
@@ -435,12 +478,14 @@ export default function FormPanel({
                 <label className="block text-xs font-semibold text-gray-700">
                   Cargo Pretendido / Objetivo Profissional *
                 </label>
-                <span
-                  className="text-[11px] text-[#004A8D] font-bold cursor-help"
-                  title="Insira o título exato da vaga a qual está se candidatando (ex: Analista Financeiro Pleno) para aumentar sua relevância nos filtros ATS."
+                <button
+                  type="button"
+                  onClick={onOpenAts}
+                  className="text-[11px] text-[#004A8D] hover:text-[#00386c] font-bold flex items-center gap-1 hover:underline cursor-pointer transition-colors"
+                  title="Abrir painel e dicas de otimização ATS"
                 >
                   💡 Dica ATS
-                </span>
+                </button>
               </div>
               <input
                 type="text"
@@ -468,7 +513,8 @@ export default function FormPanel({
               type="tel"
               placeholder="Ex: (11) 99999-9999"
               value={data.phone}
-              onChange={(e) => update({ phone: e.target.value })}
+              onChange={(e) => update({ phone: formatPhone(e.target.value) })}
+              maxLength={15}
               inputMode="tel"
               required
             />
@@ -499,10 +545,37 @@ export default function FormPanel({
                 Cidade *
               </label>
               {data.state && citiesList.length > 0 ? (
-                <div className="space-y-1">
+                isCustomCity ? (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      placeholder="Digite o nome da sua cidade"
+                      value={data.city}
+                      onChange={(e) => update({ city: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomCity(false);
+                        update({ city: '' });
+                      }}
+                      className="text-[11px] text-[#004A8D] hover:underline font-semibold"
+                    >
+                      ← Voltar para seleção da lista
+                    </button>
+                  </div>
+                ) : (
                   <select
-                    value={data.city}
-                    onChange={(e) => update({ city: e.target.value })}
+                    value={citiesList.includes(data.city) ? data.city : (data.city ? 'OUTRA' : '')}
+                    onChange={(e) => {
+                      if (e.target.value === 'OUTRA') {
+                        setIsCustomCity(true);
+                        update({ city: '' });
+                      } else {
+                        update({ city: e.target.value });
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 transition-all duration-200 shadow-2xs"
                   >
                     <option value="">Selecione a Cidade...</option>
@@ -511,17 +584,9 @@ export default function FormPanel({
                         {c}
                       </option>
                     ))}
-                    <option value="OUTRA">Outra (Digitar manualmente)...</option>
+                    <option value="OUTRA">Outra cidade (Digitar manualmente)...</option>
                   </select>
-                  {data.city === 'OUTRA' && (
-                    <input
-                      type="text"
-                      placeholder="Digite o nome da sua cidade"
-                      onChange={(e) => update({ city: e.target.value })}
-                      className="w-full mt-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-sm"
-                    />
-                  )}
-                </div>
+                )
               ) : (
                 <input
                   type="text"
@@ -650,17 +715,49 @@ export default function FormPanel({
           {/* Campos Opcionais Ativados */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {data.enabledPersonalFields.birthDate && (
-              <InputField
-                label="Data de Nascimento / Idade"
-                placeholder="Ex: 25 anos ou 15/04/1999"
-                value={data.birthDate || ''}
-                onChange={(e) => update({ birthDate: e.target.value })}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">Data de Nascimento / Idade</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('birthDate');
+                      update({ birthDate: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: 25 anos ou 15/04/1999"
+                  value={data.birthDate || ''}
+                  onChange={(e) => update({ birthDate: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              </div>
             )}
 
             {data.enabledPersonalFields.maritalStatus && (
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Estado Civil</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">Estado Civil</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('maritalStatus');
+                      update({ maritalStatus: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
                 <select
                   value={data.maritalStatus || ''}
                   onChange={(e) => update({ maritalStatus: e.target.value })}
@@ -677,48 +774,138 @@ export default function FormPanel({
             )}
 
             {data.enabledPersonalFields.linkedin && (
-              <InputField
-                label="LinkedIn"
-                placeholder="Ex: linkedin.com/in/seunome"
-                value={data.linkedin || ''}
-                onChange={(e) => update({ linkedin: e.target.value })}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">LinkedIn</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('linkedin');
+                      update({ linkedin: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: linkedin.com/in/seunome"
+                  value={data.linkedin || ''}
+                  onChange={(e) => update({ linkedin: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              </div>
             )}
 
             {data.enabledPersonalFields.github && (
-              <InputField
-                label="GitHub"
-                placeholder="Ex: github.com/seunome"
-                value={data.github || ''}
-                onChange={(e) => update({ github: e.target.value })}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">GitHub</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('github');
+                      update({ github: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: github.com/seunome"
+                  value={data.github || ''}
+                  onChange={(e) => update({ github: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              </div>
             )}
 
             {data.enabledPersonalFields.portfolio && (
-              <InputField
-                label="Portfólio / Site Pessoal"
-                placeholder="Ex: seunome.dev ou behance.net/seunome"
-                value={data.portfolio || ''}
-                onChange={(e) => update({ portfolio: e.target.value })}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">Portfólio / Site Pessoal</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('portfolio');
+                      update({ portfolio: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: seunome.dev ou behance.net/seunome"
+                  value={data.portfolio || ''}
+                  onChange={(e) => update({ portfolio: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              </div>
             )}
 
             {data.enabledPersonalFields.driverLicense && (
-              <InputField
-                label="CNH (Carteira de Habilitação)"
-                placeholder="Ex: Categoria B (Carro)"
-                value={data.driverLicense || ''}
-                onChange={(e) => update({ driverLicense: e.target.value })}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">CNH (Carteira de Habilitação)</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('driverLicense');
+                      update({ driverLicense: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: Categoria B (Carro)"
+                  value={data.driverLicense || ''}
+                  onChange={(e) => update({ driverLicense: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              </div>
             )}
 
             {data.enabledPersonalFields.nationality && (
-              <InputField
-                label="Nacionalidade / Naturalidade"
-                placeholder="Ex: Brasileira / São Paulo, SP"
-                value={data.nationality || ''}
-                onChange={(e) => update({ nationality: e.target.value })}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">Nacionalidade / Naturalidade</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      togglePersonalField('nationality');
+                      update({ nationality: '' });
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Remover campo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remover</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ex: Brasileira / São Paulo, SP"
+                  value={data.nationality || ''}
+                  onChange={(e) => update({ nationality: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              </div>
             )}
           </div>
 
@@ -1441,20 +1628,58 @@ export default function FormPanel({
             )}
           </div>
 
-          {/* Sugestões de Tech */}
+          {/* Sugestões de Ferramentas e Stacks com Categorias Diversificadas */}
           <div>
-            <span className="text-[11px] font-bold text-gray-500 block mb-1.5">💡 Sugestões de ferramentas e stacks:</span>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-              {TECH_SUGGESTIONS.filter((t) => !(data.technologies || []).includes(t)).map((t) => (
+            <span className="text-[11px] font-bold text-gray-700 block mb-2">
+              💡 Sugestões de ferramentas e stacks (por segmento de atuação):
+            </span>
+            
+            {/* Abas de Categorias */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1.5 no-scrollbar mb-2">
+              <button
+                type="button"
+                onClick={() => setTechCategoryTab('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  techCategoryTab === 'all'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Todos os Segmentos
+              </button>
+              {TECH_CATEGORIES.map((cat) => (
                 <button
-                  key={t}
+                  key={cat.id}
                   type="button"
-                  onClick={() => toggleSkillItem(data.technologies || [], t, 'technologies')}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-emerald-600 hover:bg-emerald-50 text-gray-700 text-xs font-medium transition-all"
+                  onClick={() => setTechCategoryTab(cat.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                    techCategoryTab === cat.id
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  + {t}
+                  {cat.label}
                 </button>
               ))}
+            </div>
+
+            {/* Pílulas de Sugestão */}
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-gray-50/70 rounded-xl border border-gray-100">
+              {(techCategoryTab === 'all'
+                ? TECH_SUGGESTIONS
+                : TECH_CATEGORIES.find((c) => c.id === techCategoryTab)?.items || []
+              )
+                .filter((t) => !(data.technologies || []).includes(t))
+                .map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleSkillItem(data.technologies || [], t, 'technologies')}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-emerald-600 hover:bg-emerald-50 text-gray-700 text-xs font-medium transition-all"
+                  >
+                    + {t}
+                  </button>
+                ))}
             </div>
           </div>
         </div>

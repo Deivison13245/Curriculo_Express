@@ -1,43 +1,117 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Modal from './Modal';
-import { Upload, Link as LinkIcon, FileText, CheckCircle2, Sparkles, Palette, ExternalLink } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, Sparkles, Palette, ExternalLink, ClipboardPaste, AlertCircle } from 'lucide-react';
+import { parseResumeTextWithAI } from '../../services/aiService';
+import type { ResumeData } from '../../types';
 
 interface ImportModalProps {
   onClose: () => void;
-  onImportData: (imported: { name?: string; jobTitle?: string; email?: string; summary?: string }) => void;
+  onImportData: (imported: Partial<ResumeData>) => void;
   onOpenCanva?: () => void;
 }
 
 export default function ImportModal({ onClose, onImportData, onOpenCanva }: ImportModalProps) {
-  const [activeTab, setActiveTab] = useState<'file' | 'linkedin' | 'canva'>('file');
-  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [activeTab, setActiveTab] = useState<'file' | 'paste' | 'canva'>('file');
+  const [pastedText, setPastedText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleImport() {
+  async function processText(text: string) {
+    if (!text.trim()) {
+      setError('Por favor, insira ou envie o conteúdo do seu currículo.');
+      return;
+    }
+    setError(null);
     setLoading(true);
-    setTimeout(() => {
+    setStatusMessage('Analisando e extraindo dados com IA...');
+
+    try {
+      const extracted = await parseResumeTextWithAI(text);
+      if (!extracted || (!extracted.name && !extracted.jobTitle && !extracted.email && !extracted.summary)) {
+        throw new Error('Não foi possível extrair dados estruturados deste conteúdo.');
+      }
+
       setLoading(false);
       setSuccess(true);
       setTimeout(() => {
-        onImportData({
-          name: 'Maria Silva Santos',
-          jobTitle: 'Desenvolvedora Full Stack',
-          email: 'maria.silva@email.com',
-          summary: 'Profissional com sólida experiência em desenvolvimento web, arquitetura de sistemas e liderança de projetos ágeis.',
-        });
+        onImportData(extracted);
         onClose();
-      }, 1000);
-    }, 1200);
+      }, 900);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err?.message || 'Erro ao processar o currículo. Verifique o texto e tente novamente.');
+    }
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+
+    // Se for arquivo JSON (Backup do Currículo Express)
+    if (file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          setSuccess(true);
+          setTimeout(() => {
+            onImportData(json);
+            onClose();
+          }, 800);
+        } catch (err) {
+          setError('Arquivo JSON inválido.');
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    // Se for arquivo de texto (.txt, .md, .csv)
+    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const text = event.target?.result as string;
+        await processText(text);
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    // Para outros arquivos (PDF, DOCX)
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result;
+      if (typeof content === 'string') {
+        await processText(content);
+      } else {
+        // Leitura básica de strings decodificáveis
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        const decodedText = decoder.decode(content as ArrayBuffer);
+        // Filtra caracteres legíveis
+        const printableText = decodedText.replace(/[^\x20-\x7E\xC0-\xFF\n\r\t]/g, ' ');
+        if (printableText.length > 50) {
+          await processText(printableText);
+        } else {
+          setError('Não foi possível ler o texto do documento diretamente. Recomendamos copiar e colar o texto na aba "Colar Texto / LinkedIn".');
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
   }
 
   return (
-    <Modal title="✨ Importação & Integrações" onClose={onClose}>
+    <Modal title="✨ Importação Inteligente de Currículo" onClose={onClose}>
       <div className="space-y-5">
         {/* Subtabs */}
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setActiveTab('file')}
+            type="button"
+            onClick={() => { setActiveTab('file'); setError(null); }}
             className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-all ${
               activeTab === 'file'
                 ? 'border-[#004A8D] text-[#004A8D]'
@@ -45,21 +119,23 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
             }`}
           >
             <Upload className="w-4 h-4 text-[#F7941D]" />
-            <span>Upload PDF / DOCX</span>
+            <span>Upload de Arquivo</span>
           </button>
           <button
-            onClick={() => setActiveTab('linkedin')}
+            type="button"
+            onClick={() => { setActiveTab('paste'); setError(null); }}
             className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'linkedin'
+              activeTab === 'paste'
                 ? 'border-[#004A8D] text-[#004A8D]'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            <LinkIcon className="w-4 h-4 text-[#F7941D]" />
-            <span>LinkedIn</span>
+            <ClipboardPaste className="w-4 h-4 text-[#004A8D]" />
+            <span>Colar Texto / LinkedIn</span>
           </button>
           <button
-            onClick={() => setActiveTab('canva')}
+            type="button"
+            onClick={() => { setActiveTab('canva'); setError(null); }}
             className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-all ${
               activeTab === 'canva'
                 ? 'border-[#7D2AE8] text-[#7D2AE8]'
@@ -73,40 +149,49 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
 
         {activeTab === 'file' && (
           <div className="space-y-4">
-            <div
-              className="border-2 border-dashed border-[#004A8D]/30 bg-[#004A8D]/5 rounded-2xl p-8 text-center hover:border-[#004A8D] transition-colors cursor-pointer group"
-              onClick={handleImport}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json,.txt,.pdf,.docx,.doc"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="resumeFileInput"
+            />
+            <label
+              htmlFor="resumeFileInput"
+              className="border-2 border-dashed border-[#004A8D]/30 bg-[#004A8D]/5 rounded-2xl p-8 text-center hover:border-[#004A8D] transition-all cursor-pointer group block"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#004A8D] text-white mx-auto flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 rounded-2xl bg-[#004A8D] text-white mx-auto flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
                 <FileText className="w-6 h-6 text-[#F7941D]" />
               </div>
-              <p className="text-xs font-bold text-gray-900">Arraste seu arquivo de currículo ou clique aqui</p>
-              <p className="text-[11px] text-gray-500 mt-1">Formatos suportados: PDF, DOCX, DOC (máx. 10MB)</p>
-            </div>
+              <p className="text-xs font-bold text-gray-900">Clique para selecionar seu arquivo ou arraste aqui</p>
+              <p className="text-[11px] text-gray-500 mt-1">Formatos suportados: JSON (Backup), TXT, PDF, DOCX (máx. 10MB)</p>
+            </label>
           </div>
         )}
 
-        {activeTab === 'linkedin' && (
-          <div className="space-y-4">
+        {activeTab === 'paste' && (
+          <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                URL do Perfil do LinkedIn:
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Cole o texto do seu currículo ou resumo do LinkedIn:
               </label>
-              <input
-                type="url"
-                value={linkedinUrl}
-                onChange={e => setLinkedinUrl(e.target.value)}
-                placeholder="https://www.linkedin.com/in/seu-perfil"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:ring-2 focus:ring-[#004A8D]"
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Cole aqui todo o texto do seu currículo atual, experiências ou seção 'Sobre' do LinkedIn..."
+                rows={7}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#004A8D] focus:border-[#004A8D] resize-none"
               />
             </div>
             <button
-              onClick={handleImport}
-              disabled={loading || !linkedinUrl.trim()}
-              className="w-full py-3 rounded-xl bg-[#004A8D] hover:bg-[#00386c] text-white font-bold text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              type="button"
+              onClick={() => processText(pastedText)}
+              disabled={loading || !pastedText.trim()}
+              className="w-full py-3 rounded-xl bg-[#004A8D] hover:bg-[#00386c] text-white font-bold text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
             >
               <Sparkles className="w-4 h-4 text-[#F7941D]" />
-              <span>{loading ? 'Extraindo perfil...' : 'Extrair Perfil do LinkedIn'}</span>
+              <span>{loading ? 'Extraindo dados com IA...' : 'Extrair e Preencher com IA'}</span>
             </button>
           </div>
         )}
@@ -128,7 +213,7 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
                     onClose();
                     if (onOpenCanva) onOpenCanva();
                   }}
-                  className="px-4 py-2 bg-[#7D2AE8] hover:bg-[#6820c7] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                  className="px-4 py-2 bg-[#7D2AE8] hover:bg-[#6820c7] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
                 >
                   <span>Ver Guia do Canva</span>
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -141,17 +226,25 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
         {loading && (
           <div className="p-4 bg-[#004A8D]/10 rounded-xl text-center space-y-2">
             <div className="w-6 h-6 border-2 border-[#004A8D] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs font-bold text-[#004A8D]">Processando e estruturando dados com IA...</p>
+            <p className="text-xs font-bold text-[#004A8D]">{statusMessage}</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs font-medium flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
           </div>
         )}
 
         {success && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Dados importados com sucesso!</span>
+            <span>Dados extraídos e importados com sucesso!</span>
           </div>
         )}
       </div>
     </Modal>
   );
 }
+
