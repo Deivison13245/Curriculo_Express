@@ -297,11 +297,26 @@ export default function FormPanel({
     onChange({ ...data, ...patch });
   }
 
-  function togglePersonalField(field: keyof typeof data.enabledPersonalFields) {
-    update({
+  function removePersonalField(field: keyof typeof data.enabledPersonalFields) {
+    if (field === 'photo' && photoInputRef.current) {
+      photoInputRef.current.value = '';
+    }
+    onChange({
+      ...data,
+      [field]: field === 'photo' ? '' : undefined,
       enabledPersonalFields: {
         ...data.enabledPersonalFields,
-        [field]: !data.enabledPersonalFields[field],
+        [field]: false,
+      },
+    });
+  }
+
+  function enablePersonalField(field: keyof typeof data.enabledPersonalFields) {
+    onChange({
+      ...data,
+      enabledPersonalFields: {
+        ...data.enabledPersonalFields,
+        [field]: true,
       },
     });
   }
@@ -609,10 +624,11 @@ export default function FormPanel({
                 </div>
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('photo')}
-                  className="text-xs text-red-600 font-bold hover:underline"
+                  onClick={() => removePersonalField('photo')}
+                  className="text-xs text-red-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  Remover Campo
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remover Foto</span>
                 </button>
               </div>
 
@@ -664,7 +680,7 @@ export default function FormPanel({
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="ml-2 text-xs text-red-600 hover:underline font-bold"
+                      className="ml-2 text-xs text-red-600 hover:underline font-bold cursor-pointer"
                     >
                       Remover
                     </button>
@@ -692,10 +708,11 @@ export default function FormPanel({
                 </div>
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('videoUrl')}
-                  className="text-xs text-red-600 font-bold hover:underline"
+                  onClick={() => removePersonalField('videoUrl')}
+                  className="text-xs text-red-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  Remover
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remover</span>
                 </button>
               </div>
 
@@ -720,10 +737,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">Data de Nascimento / Idade</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('birthDate');
-                      update({ birthDate: '' });
-                    }}
+                    onClick={() => removePersonalField('birthDate')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -747,10 +761,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">Estado Civil</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('maritalStatus');
-                      update({ maritalStatus: '' });
-                    }}
+                    onClick={() => removePersonalField('maritalStatus')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -779,10 +790,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">LinkedIn</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('linkedin');
-                      update({ linkedin: '' });
-                    }}
+                    onClick={() => removePersonalField('linkedin')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -806,10 +814,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">GitHub</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('github');
-                      update({ github: '' });
-                    }}
+                    onClick={() => removePersonalField('github')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -833,10 +838,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">Portfólio / Site Pessoal</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('portfolio');
-                      update({ portfolio: '' });
-                    }}
+                    onClick={() => removePersonalField('portfolio')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -860,10 +862,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">CNH (Carteira de Habilitação)</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('driverLicense');
-                      update({ driverLicense: '' });
-                    }}
+                    onClick={() => removePersonalField('driverLicense')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -887,10 +886,7 @@ export default function FormPanel({
                   <label className="block text-xs font-semibold text-gray-700">Nacionalidade / Naturalidade</label>
                   <button
                     type="button"
-                    onClick={() => {
-                      togglePersonalField('nationality');
-                      update({ nationality: '' });
-                    }}
+                    onClick={() => removePersonalField('nationality')}
                     className="text-[11px] text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                     title="Remover campo"
                   >
@@ -918,8 +914,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.photo && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('photo')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('photo')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>Foto de Perfil</span>
@@ -929,8 +925,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.videoUrl && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('videoUrl')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-red-500 hover:bg-red-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('videoUrl')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-red-500 hover:bg-red-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-red-500" />
                   <span>Vídeo Pitch (YouTube)</span>
@@ -940,8 +936,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.linkedin && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('linkedin')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('linkedin')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>LinkedIn</span>
@@ -951,8 +947,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.github && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('github')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('github')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>GitHub</span>
@@ -962,8 +958,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.portfolio && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('portfolio')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('portfolio')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>Portfólio</span>
@@ -973,8 +969,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.birthDate && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('birthDate')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('birthDate')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>Data de Nascimento / Idade</span>
@@ -984,8 +980,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.maritalStatus && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('maritalStatus')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('maritalStatus')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>Estado Civil</span>
@@ -995,8 +991,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.driverLicense && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('driverLicense')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('driverLicense')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>CNH</span>
@@ -1006,8 +1002,8 @@ export default function FormPanel({
               {!data.enabledPersonalFields.nationality && (
                 <button
                   type="button"
-                  onClick={() => togglePersonalField('nationality')}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  onClick={() => enablePersonalField('nationality')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
                   <span>Nacionalidade</span>

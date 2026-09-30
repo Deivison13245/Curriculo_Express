@@ -86,13 +86,131 @@ export async function callGemini(prompt: string, systemInstruction?: string): Pr
 }
 
 /**
+ * Parser multimodal direto para arquivos PDF, DOCX, imagens e documentos usando a API Gemini
+ */
+export async function parseResumeFileWithAI(base64Data: string, mimeType: string): Promise<any> {
+  const key = getApiKey();
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+
+  const prompt = `Você é um extrator de alta precisão especializado em ler e analisar arquivos de currículos (PDF, imagens e documentos) para o sistema Curriculo Express.
+
+INSTRUÇÕES E REGRAS ABSOLUTAS:
+1. Extraia o nome real do candidato presente no documento. NÃO extraia tags de sistema, lixo de codificação (como [xml#, tags HTML, etc.) nem nomes de exemplo.
+2. Identifique com precisão:
+   - Nome Completo
+   - Cargo Pretendido / Objetivo Profissional (ou último cargo relevante)
+   - E-mail de contato
+   - Telefone / WhatsApp
+   - Localização: Cidade e Estado (Sigla de 2 letras, ex: SP, BA, RJ)
+   - Links: LinkedIn, GitHub, Portfólio se existirem no documento
+   - Resumo Profissional / Síntese
+   - Habilidades Técnicas (Hard Skills) e Tecnologias/Ferramentas
+   - Habilidades Comportamentais (Soft Skills)
+   - Experiências Profissionais completas (cargo, empresa, datas de início e fim, se é atual, e descrição das atividades)
+   - Formação Acadêmica (grau/nível, curso, instituição, ano)
+3. Não invente nenhum dado que não esteja presente no arquivo. Se um campo não constar, preencha como string vazia ("") ou array vazio ([]).
+
+Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de código adicionais, apenas o JSON bruto):
+{
+  "name": "Nome real",
+  "jobTitle": "Cargo",
+  "email": "email",
+  "phone": "telefone",
+  "city": "cidade",
+  "state": "UF",
+  "linkedin": "url do linkedin",
+  "github": "url do github",
+  "portfolio": "url do portfolio/site",
+  "summary": "resumo profissional",
+  "hardSkills": ["Habilidade 1", "Habilidade 2"],
+  "softSkills": ["Soft Skill 1"],
+  "technologies": ["Tecnologia 1", "Software 2"],
+  "experience": [
+    {
+      "role": "Cargo",
+      "company": "Empresa",
+      "startDate": "Mês/Ano ou Ano",
+      "endDate": "Mês/Ano ou Presente",
+      "current": false,
+      "description": "Atividades e conquistas"
+    }
+  ],
+  "education": [
+    {
+      "degree": "Grau",
+      "course": "Curso",
+      "institution": "Instituição",
+      "year": "Ano",
+      "period": ""
+    }
+  ]
+}`;
+
+  const payload: any = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64Data
+            }
+          },
+          {
+            text: prompt
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 2500,
+    }
+  };
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.warn('[AIService] Erro no endpoint multimodal:', res.status, errData);
+      throw new Error(`Erro na API Gemini ao ler arquivo (Status ${res.status})`);
+    }
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      throw new Error('A IA não retornou conteúdo para este documento.');
+    }
+
+    const cleanedJson = text
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
+    return JSON.parse(cleanedJson);
+  } catch (err) {
+    console.error('[AIService] Falha ao processar arquivo multimodal:', err);
+    throw err;
+  }
+}
+
+/**
  * Parser inteligente de currículo em texto usando IA com fallback heurístico
  */
 export async function parseResumeTextWithAI(rawText: string): Promise<any> {
   const prompt = `Analise o texto abaixo, que corresponde a um currículo ou perfil profissional, e extraia estritamente os dados reais encontrados no texto em formato JSON.
-ATENÇÃO: NÃO invente dados que não existam no texto. Se um campo não for identificado, retorne string vazia ou array vazio.
+ATENÇÃO CRÍTICA:
+1. Extraia o nome real (NUNCA coloque tags como [xml#, nem nomes fictícios).
+2. Não invente dados que não existam no texto. Se um campo não for identificado, retorne string vazia ou array vazio.
 
-Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de markdown adicionais se possível, apenas JSON) com esta estrutura:
+Retorne EXCLUSIVAMENTE um objeto JSON válido com esta estrutura:
 {
   "name": "Nome completo",
   "jobTitle": "Cargo pretendido ou atual",
@@ -100,6 +218,9 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de markdown adicionais
   "phone": "Telefone",
   "city": "Cidade",
   "state": "Sigla do Estado (2 letras, ex: SP)",
+  "linkedin": "url ou usuário do linkedin",
+  "github": "url do github",
+  "portfolio": "url do portfolio",
   "summary": "Resumo profissional ou síntese",
   "hardSkills": ["Habilidade técnica 1", "Habilidade 2"],
   "softSkills": ["Habilidade comportamental 1"],

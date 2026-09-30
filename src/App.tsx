@@ -298,22 +298,34 @@ export default function App() {
           onClose={() => setModal(null)}
           onOpenCanva={() => setModal('canva')}
           onImportData={(imported) => {
-            setData((d) => ({
-              ...d,
-              ...imported,
-              name: imported.name || d.name,
-              jobTitle: imported.jobTitle || d.jobTitle,
-              email: imported.email || d.email,
-              phone: imported.phone || d.phone,
-              city: imported.city || d.city,
-              state: imported.state || d.state,
-              summary: imported.summary || d.summary,
-              hardSkills: (imported.hardSkills && imported.hardSkills.length > 0) ? imported.hardSkills : d.hardSkills,
-              softSkills: (imported.softSkills && imported.softSkills.length > 0) ? imported.softSkills : d.softSkills,
-              technologies: (imported.technologies && imported.technologies.length > 0) ? imported.technologies : d.technologies,
-              experience: (imported.experience && imported.experience.length > 0) ? imported.experience : d.experience,
-              education: (imported.education && imported.education.length > 0) ? imported.education : d.education,
-            }));
+            setData((d) => {
+              const updatedEnabledFields = { ...d.enabledPersonalFields };
+              if (imported.linkedin && imported.linkedin.trim()) updatedEnabledFields.linkedin = true;
+              if (imported.github && imported.github.trim()) updatedEnabledFields.github = true;
+              if (imported.portfolio && imported.portfolio.trim()) updatedEnabledFields.portfolio = true;
+              if (imported.birthDate && imported.birthDate.trim()) updatedEnabledFields.birthDate = true;
+              if (imported.maritalStatus && imported.maritalStatus.trim()) updatedEnabledFields.maritalStatus = true;
+              if (imported.driverLicense && imported.driverLicense.trim()) updatedEnabledFields.driverLicense = true;
+              if (imported.nationality && imported.nationality.trim()) updatedEnabledFields.nationality = true;
+
+              return {
+                ...d,
+                ...imported,
+                name: imported.name || d.name,
+                jobTitle: imported.jobTitle || d.jobTitle,
+                email: imported.email || d.email,
+                phone: imported.phone || d.phone,
+                city: imported.city || d.city,
+                state: imported.state || d.state,
+                summary: imported.summary || d.summary,
+                enabledPersonalFields: updatedEnabledFields,
+                hardSkills: (imported.hardSkills && imported.hardSkills.length > 0) ? imported.hardSkills : d.hardSkills,
+                softSkills: (imported.softSkills && imported.softSkills.length > 0) ? imported.softSkills : d.softSkills,
+                technologies: (imported.technologies && imported.technologies.length > 0) ? imported.technologies : d.technologies,
+                experience: (imported.experience && imported.experience.length > 0) ? imported.experience : d.experience,
+                education: (imported.education && imported.education.length > 0) ? imported.education : d.education,
+              };
+            });
             addToast('✓ Dados do currículo importados com sucesso!');
           }}
         />

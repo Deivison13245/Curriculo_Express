@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import Modal from './Modal';
 import { Upload, FileText, CheckCircle2, Sparkles, Palette, ExternalLink, ClipboardPaste, AlertCircle } from 'lucide-react';
-import { parseResumeTextWithAI } from '../../services/aiService';
+import { parseResumeTextWithAI, parseResumeFileWithAI } from '../../services/aiService';
 import type { ResumeData } from '../../types';
 
 interface ImportModalProps {
@@ -19,6 +19,19 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  async function applyExtractedData(extracted: any) {
+    if (!extracted || (!extracted.name && !extracted.jobTitle && !extracted.email && !extracted.summary && !extracted.phone)) {
+      throw new Error('Não foi possível identificar dados estruturados neste arquivo.');
+    }
+
+    setLoading(false);
+    setSuccess(true);
+    setTimeout(() => {
+      onImportData(extracted);
+      onClose();
+    }, 900);
+  }
+
   async function processText(text: string) {
     if (!text.trim()) {
       setError('Por favor, insira ou envie o conteúdo do seu currículo.');
@@ -26,33 +39,24 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
     }
     setError(null);
     setLoading(true);
-    setStatusMessage('Analisando e extraindo dados com IA...');
+    setStatusMessage('Analisando e extraindo dados reais com IA...');
 
     try {
       const extracted = await parseResumeTextWithAI(text);
-      if (!extracted || (!extracted.name && !extracted.jobTitle && !extracted.email && !extracted.summary)) {
-        throw new Error('Não foi possível extrair dados estruturados deste conteúdo.');
-      }
-
-      setLoading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        onImportData(extracted);
-        onClose();
-      }, 900);
+      await applyExtractedData(extracted);
     } catch (err: any) {
       setLoading(false);
       setError(err?.message || 'Erro ao processar o currículo. Verifique o texto e tente novamente.');
     }
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError(null);
 
-    // Se for arquivo JSON (Backup do Currículo Express)
+    // 1. Se for arquivo JSON (Backup completo do Currículo Express)
     if (file.name.endsWith('.json')) {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -64,15 +68,15 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
             onClose();
           }, 800);
         } catch (err) {
-          setError('Arquivo JSON inválido.');
+          setError('Arquivo JSON de backup inválido.');
         }
       };
       reader.readAsText(file);
       return;
     }
 
-    // Se for arquivo de texto (.txt, .md, .csv)
-    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+    // 2. Se for arquivo de texto simples (.txt, .md)
+    if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const text = event.target?.result as string;
@@ -82,26 +86,34 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
       return;
     }
 
-    // Para outros arquivos (PDF, DOCX)
+    // 3. Se for PDF ou Imagem (Processamento Multimodal Direto de Alta Fidelidade)
+    setLoading(true);
+    setStatusMessage(`Lendo e analisando "${file.name}" com IA visual...`);
+
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const content = event.target?.result;
-      if (typeof content === 'string') {
-        await processText(content);
-      } else {
-        // Leitura básica de strings decodificáveis
-        const decoder = new TextDecoder('utf-8', { fatal: false });
-        const decodedText = decoder.decode(content as ArrayBuffer);
-        // Filtra caracteres legíveis
-        const printableText = decodedText.replace(/[^\x20-\x7E\xC0-\xFF\n\r\t]/g, ' ');
-        if (printableText.length > 50) {
-          await processText(printableText);
-        } else {
-          setError('Não foi possível ler o texto do documento diretamente. Recomendamos copiar e colar o texto na aba "Colar Texto / LinkedIn".');
-        }
+      try {
+        const dataUrl = event.target?.result as string;
+        const base64Data = dataUrl.split(',')[1];
+        const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png');
+
+        const extracted = await parseResumeFileWithAI(base64Data, mimeType);
+        await applyExtractedData(extracted);
+      } catch (err: any) {
+        console.warn('[ImportModal] Falha na leitura multimodal:', err);
+        setLoading(false);
+        setError(
+          'Não foi possível extrair o texto diretamente do PDF estruturado. Por favor, tente copiar e colar o texto na aba "Colar Texto / LinkedIn" ao lado para garantia total.'
+        );
       }
     };
-    reader.readAsArrayBuffer(file);
+
+    reader.onerror = () => {
+      setLoading(false);
+      setError('Erro ao ler o arquivo selecionado.');
+    };
+
+    reader.readAsDataURL(file);
   }
 
   return (
