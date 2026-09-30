@@ -26,27 +26,63 @@ import {
   Link,
   Check,
   Zap,
+  HelpCircle,
+  Video,
+  Camera,
+  AlertTriangle,
+  FileUp,
+  Cpu,
+  Info,
+  X,
 } from 'lucide-react';
+import { BRAZIL_STATES, getCitiesForState } from '../data/brazilLocations';
 
 const HARD_SKILLS_SUGGESTIONS = [
-  'React', 'Node.js', 'Python', 'TypeScript', 'SQL', 'Excel Avançado', 'Power BI', 'Figma', 'Git', 'Docker', 'AWS', 'Scrum', 'Java', 'C#', 'Vue.js'
+  'React', 'Node.js', 'Python', 'TypeScript', 'SQL e Banco de Dados', 'Pacote Office / Excel Avançado', 'Power BI & Dashboards', 'Figma / UI Design', 'Git & GitHub', 'Docker & Nuvem', 'AWS Cloud', 'Metodologias Ágeis (Scrum/Kanban)', 'Java', 'C# / .NET', 'Gestão de Projetos'
 ];
+
 const SOFT_SKILLS_SUGGESTIONS = [
-  'Liderança', 'Comunicação', 'Trabalho em equipe', 'Proatividade', 'Criatividade', 'Organização', 'Adaptabilidade', 'Resolução de conflitos', 'Pensamento crítico', 'Empatia'
+  'Comunicação Clara e Assertiva', 'Trabalho em Equipe', 'Liderança e Motivação', 'Inteligência Emocional', 'Resolução de Problemas Complexos', 'Pensamento Crítico', 'Adaptabilidade e Flexibilidade', 'Gestão do Tempo e Produtividade', 'Proatividade e Autonomia', 'Negociação e Persuasão', 'Foco em Resultados'
 ];
-const DEGREES = ['Ensino Médio', 'Técnico', 'Graduação', 'Pós-graduação', 'MBA', 'Mestrado', 'Doutorado'];
-const MARITAL_STATUS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União estável'];
+
+const TECH_SUGGESTIONS = [
+  'JavaScript', 'TypeScript', 'React.js', 'Next.js', 'Node.js', 'Python', 'Django', 'SQL / PostgreSQL', 'MongoDB', 'Docker', 'Kubernetes', 'AWS', 'Azure', 'Git', 'Linux', 'SAP ERP', 'Salesforce', 'Figma', 'Power BI', 'Excel'
+];
+
+const DEGREES = [
+  'Ensino Fundamental',
+  'Ensino Médio',
+  'Ensino Técnico',
+  'Graduação / Superior',
+  'Pós-graduação / Especialização',
+  'MBA',
+  'Mestrado',
+  'Doutorado'
+];
+
+const MARITAL_STATUS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'];
 const LANGUAGE_LEVELS = ['Básico', 'Intermediário', 'Avançado', 'Fluente', 'Nativo'];
-const PERIODS = ['Manhã', 'Tarde', 'Noite', 'Integral', 'EAD'];
+const PERIODS = ['Matutino', 'Vespertino', 'Noturno', 'Integral', 'EAD'];
 
 function uid() {
   return Math.random().toString(36).slice(2);
 }
 
-function InputField({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+function InputField({
+  label,
+  tooltip,
+  ...props
+}: { label: string; tooltip?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-700 mb-1">{label}</label>
+      <div className="flex items-center justify-between mb-1">
+        <label className="block text-xs font-semibold text-gray-700">{label}</label>
+        {tooltip && (
+          <span className="text-[10.5px] text-gray-400" title={tooltip}>
+            ℹ️
+          </span>
+        )}
+      </div>
       <input
         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
         {...props}
@@ -55,7 +91,10 @@ function InputField({ label, ...props }: { label: string } & React.InputHTMLAttr
   );
 }
 
-function TextareaField({ label, ...props }: { label: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+function TextareaField({
+  label,
+  ...props
+}: { label: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-700 mb-1">{label}</label>
@@ -71,7 +110,7 @@ function SelectField({
   label,
   options,
   ...props
-}: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
+}: { label: string; options: { value: string; label: string }[] | string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-700 mb-1">{label}</label>
@@ -80,11 +119,15 @@ function SelectField({
         {...props}
       >
         <option value="">Selecione...</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
+        {options.map((o) => {
+          const val = typeof o === 'string' ? o : o.value;
+          const lbl = typeof o === 'string' ? o : o.label;
+          return (
+            <option key={val} value={val}>
+              {lbl}
+            </option>
+          );
+        })}
       </select>
     </div>
   );
@@ -99,6 +142,7 @@ interface AccordionSectionProps {
   onToggle: () => void;
   children: React.ReactNode;
   badgeCount?: number;
+  rightAction?: React.ReactNode;
 }
 
 function AccordionSection({
@@ -109,40 +153,45 @@ function AccordionSection({
   onToggle,
   children,
   badgeCount,
+  rightAction,
 }: AccordionSectionProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs overflow-hidden transition-all duration-200 hover:border-[#004A8D]/40">
-      <button
-        type="button"
+      <div
         onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between bg-white hover:bg-gray-50/80 transition-colors text-left group"
-        aria-expanded={isOpen}
+        className="w-full px-5 py-4 flex items-center justify-between bg-white hover:bg-gray-50/80 transition-colors text-left cursor-pointer select-none"
       >
-        <div className="flex items-center gap-3.5">
-          <div className="p-2.5 rounded-xl bg-[#004A8D]/10 text-[#004A8D] group-hover:bg-[#004A8D] group-hover:text-white transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#004A8D]/10 text-[#004A8D] flex items-center justify-center shrink-0">
             {icon}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-gray-900 group-hover:text-[#004A8D] transition-colors">
-                {title}
-              </h3>
-              {typeof badgeCount === 'number' && badgeCount > 0 && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#F7941D]/20 text-[#004A8D]">
+              <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+              {badgeCount !== undefined && badgeCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-[#004A8D]/10 text-[#004A8D] text-[11px] font-bold">
                   {badgeCount}
                 </span>
               )}
             </div>
-            {subtitle && <p className="text-xs text-gray-500 font-medium">{subtitle}</p>}
+            {subtitle && <p className="text-[11px] text-gray-500 mt-0.5">{subtitle}</p>}
           </div>
         </div>
-        <div className="text-gray-400 group-hover:text-[#004A8D] transition-colors">
-          {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          {rightAction}
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+          >
+            {isOpen ? <ChevronUp className="w-5 h-5 text-[#004A8D]" /> : <ChevronDown className="w-5 h-5" />}
+          </button>
         </div>
-      </button>
+      </div>
 
       {isOpen && (
-        <div className="px-5 pb-5 pt-2 border-t border-gray-100 transition-all duration-200">
+        <div className="px-5 pb-5 pt-1 border-t border-gray-100 space-y-4 animate-in fade-in-50 duration-200">
           {children}
         </div>
       )}
@@ -154,9 +203,13 @@ interface FormPanelProps {
   data: ResumeData;
   onChange: (data: ResumeData) => void;
   onOpenSynthesis: () => void;
-  onOpenStar: (expId: string) => void;
+  onOpenStar: (expId?: string) => void;
   onOpenReview: () => void;
-  onOpenImportModal: () => void;
+  onOpenAts: () => void;
+  onOpenImport: () => void;
+  onOpenCanva: () => void;
+  onOpenVideoExplainer: () => void;
+  onOpenSkillsExplainer: () => void;
 }
 
 export default function FormPanel({
@@ -164,17 +217,42 @@ export default function FormPanel({
   onChange,
   onOpenSynthesis,
   onOpenStar,
-  onOpenImportModal,
+  onOpenReview,
+  onOpenAts,
+  onOpenImport,
+  onOpenCanva,
+  onOpenVideoExplainer,
+  onOpenSkillsExplainer,
 }: FormPanelProps) {
-  const [openSection, setOpenSection] = useState<string | null>('personal');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Controle de seções abertas (por padrão, Dados Pessoais e Objetivo abertos para início suave)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    personal: true,
+    summary: true,
+    experience: false,
+    education: false,
+    skills: false,
+    technologies: false,
+    languages: false,
+    certifications: false,
+    projects: false,
+    custom: false,
+  });
+
+  // Inputs para tags customizadas
+  const [customHardSkillInput, setCustomHardSkillInput] = useState('');
+  const [customSoftSkillInput, setCustomSoftSkillInput] = useState('');
+  const [customTechInput, setCustomTechInput] = useState('');
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const projectPdfRef = useRef<HTMLInputElement>(null);
+  const [activeProjectPdfId, setActiveProjectPdfId] = useState<string | null>(null);
+
+  function toggleSection(sec: string) {
+    setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
+  }
 
   function update(patch: Partial<ResumeData>) {
     onChange({ ...data, ...patch });
-  }
-
-  function toggleSection(sectionKey: string) {
-    setOpenSection(prev => (prev === sectionKey ? null : sectionKey));
   }
 
   function togglePersonalField(field: keyof typeof data.enabledPersonalFields) {
@@ -186,410 +264,725 @@ export default function FormPanel({
     });
   }
 
-  function toggleMainSection(section: keyof typeof data.enabledSections) {
-    const isCurrentlyEnabled = data.enabledSections[section];
+  function toggleMainSection(sec: keyof typeof data.enabledSections) {
+    const nextVal = !data.enabledSections[sec];
     update({
       enabledSections: {
         ...data.enabledSections,
-        [section]: !isCurrentlyEnabled,
+        [sec]: nextVal,
       },
     });
-    if (!isCurrentlyEnabled) {
-      setOpenSection(section);
+    if (nextVal) {
+      setOpenSections((prev) => ({ ...prev, [sec]: true }));
     }
   }
 
-  // Helpers
-  function addEdu() {
-    update({
-      education: [
-        ...data.education,
-        { id: uid(), degree: '', course: '', institution: '', year: '', period: '' },
-      ],
-    });
-  }
-  function updateEdu(id: string, patch: Partial<Education>) {
-    update({ education: data.education.map(e => (e.id === id ? { ...e, ...patch } : e)) });
-  }
-  function removeEdu(id: string) {
-    update({ education: data.education.filter(e => e.id !== id) });
-  }
-
-  function addExp() {
-    update({
-      experience: [
-        ...data.experience,
-        { id: uid(), role: '', company: '', startDate: '', endDate: '', current: false, description: '' },
-      ],
-    });
-  }
-  function updateExp(id: string, patch: Partial<Experience>) {
-    update({ experience: data.experience.map(e => (e.id === id ? { ...e, ...patch } : e)) });
-  }
-  function removeExp(id: string) {
-    update({ experience: data.experience.filter(e => e.id !== id) });
+  // Tratamento de foto
+  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        alert('A foto deve ter no máximo 3MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        update({ photo: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
-  function toggleSkill(list: 'hardSkills' | 'softSkills', skill: string) {
-    const current = data[list];
-    if (current.includes(skill)) {
-      update({ [list]: current.filter(s => s !== skill) });
+  function handleRemovePhoto() {
+    update({ photo: '' });
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  }
+
+  // Manipulação de Estado (UF) e Cidade dinâmica
+  function handleStateChange(newState: string) {
+    update({
+      state: newState,
+      city: '', // limpa cidade ao trocar o estado
+    });
+  }
+
+  // Adição de Skills customizadas
+  function addCustomHardSkill() {
+    const trimmed = customHardSkillInput.trim();
+    if (trimmed && !data.hardSkills.includes(trimmed)) {
+      update({ hardSkills: [...data.hardSkills, trimmed] });
+      setCustomHardSkillInput('');
+    }
+  }
+
+  function addCustomSoftSkill() {
+    const trimmed = customSoftSkillInput.trim();
+    if (trimmed && !data.softSkills.includes(trimmed)) {
+      update({ softSkills: [...data.softSkills, trimmed] });
+      setCustomSoftSkillInput('');
+    }
+  }
+
+  function addCustomTech() {
+    const trimmed = customTechInput.trim();
+    const currentTechs = data.technologies || [];
+    if (trimmed && !currentTechs.includes(trimmed)) {
+      update({ technologies: [...currentTechs, trimmed] });
+      setCustomTechInput('');
+    }
+  }
+
+  function toggleSkillItem(list: string[], item: string, key: 'hardSkills' | 'softSkills' | 'technologies') {
+    if (list.includes(item)) {
+      update({ [key]: list.filter((i) => i !== item) });
     } else {
-      update({ [list]: [...current, skill] });
+      update({ [key]: [...list, item] });
     }
   }
 
-  function addLang() {
-    update({ languages: [...data.languages, { id: uid(), name: '', level: '' }] });
-  }
-  function updateLang(id: string, patch: Partial<Language>) {
-    update({ languages: data.languages.map(l => (l.id === id ? { ...l, ...patch } : l)) });
-  }
-  function removeLang(id: string) {
-    update({ languages: data.languages.filter(l => l.id !== id) });
-  }
-
-  function addCert() {
-    update({ certifications: [...data.certifications, { id: uid(), name: '', issuer: '', year: '' }] });
-  }
-  function updateCert(id: string, patch: Partial<Certification>) {
-    update({ certifications: data.certifications.map(c => (c.id === id ? { ...c, ...patch } : c)) });
-  }
-  function removeCert(id: string) {
-    update({ certifications: data.certifications.filter(c => c.id !== id) });
-  }
-
-  function addProject() {
-    update({
-      projects: [...data.projects, { id: uid(), title: '', description: '', link: '', year: '' }],
-    });
-  }
-  function updateProject(id: string, patch: Partial<ProjectOrAchievement>) {
-    update({ projects: data.projects.map(p => (p.id === id ? { ...p, ...patch } : p)) });
-  }
-  function removeProject(id: string) {
-    update({ projects: data.projects.filter(p => p.id !== id) });
+  // Anexo de PDF em Projetos
+  function handleProjectPdfUpload(projectId: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('O documento PDF deve ter no máximo 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const next = data.projects.map((p) =>
+          p.id === projectId
+            ? { ...p, pdfFileName: file.name, pdfData: reader.result as string }
+            : p
+        );
+        update({ projects: next });
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
-  function addCustomSection() {
-    update({
-      customSections: [
-        ...data.customSections,
-        { id: uid(), title: 'Seção Personalizada', subtitle: '', description: '' },
-      ],
-    });
+  function removeProjectPdf(projectId: string) {
+    const next = data.projects.map((p) =>
+      p.id === projectId ? { ...p, pdfFileName: undefined, pdfData: undefined } : p
+    );
+    update({ projects: next });
   }
-  function updateCustomSection(id: string, patch: Partial<CustomSectionItem>) {
-    update({
-      customSections: data.customSections.map(c => (c.id === id ? { ...c, ...patch } : c)),
-    });
-  }
-  function removeCustomSection(id: string) {
-    update({ customSections: data.customSections.filter(c => c.id !== id) });
-  }
+
+  const citiesList = getCitiesForState(data.state);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-24">
-      {/* 1. CARD DE IMPORTAÇÃO SUPERIOR (SENAC BRANDING) */}
-      <div className="bg-white rounded-2xl p-5 border border-[#004A8D]/20 shadow-xs bg-gradient-to-r from-[#004A8D]/5 via-white to-[#F7941D]/10">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-bold text-[#004A8D] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#F7941D]" />
-              Importação Inteligente de Dados
-            </h2>
-            <p className="text-xs text-gray-600 mt-0.5">
-              Economize tempo preenchendo os dados do seu currículo automaticamente.
-            </p>
+    <div className="max-w-4xl mx-auto space-y-4 pb-24">
+      {/* 1. BARRA SUPERIOR DE IMPORTAÇÃO & INTEGRAÇÕES */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-[#004A8D]/10 text-[#004A8D] flex items-center justify-center">
+            <Upload className="w-4 h-4 text-[#F7941D]" />
           </div>
+          <span className="text-xs font-bold text-gray-800">Agilize seu preenchimento:</span>
+        </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".pdf,.docx,.doc"
-              onChange={() => onOpenImportModal()}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 transition-all shadow-2xs group"
-            >
-              <Upload className="w-4 h-4 text-[#004A8D] group-hover:scale-110 transition-transform" />
-              <span>Upload de Currículo</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenImport}
+            className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+          >
+            <FileText className="w-3.5 h-3.5 text-[#004A8D]" />
+            <span>Upload PDF / Word</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={onOpenImportModal}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#004A8D] text-white text-xs font-bold hover:bg-[#00386c] transition-all shadow-sm group"
-            >
-              <Link className="w-4 h-4 text-[#F7941D] group-hover:rotate-12 transition-transform" />
-              <span>Importar LinkedIn</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onOpenImport}
+            className="px-3 py-1.5 rounded-xl border border-gray-200 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+          >
+            <Link className="w-3.5 h-3.5 text-[#004A8D]" />
+            <span>LinkedIn</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenCanva}
+            className="px-3 py-1.5 rounded-xl border border-[#7D2AE8]/30 bg-[#7D2AE8]/5 hover:bg-[#7D2AE8]/10 text-[#7D2AE8] text-xs font-bold flex items-center gap-1.5 transition-all"
+          >
+            <span>🎨 Importar / Canva</span>
+          </button>
         </div>
       </div>
 
-      {/* ACCORDIONS DE SEÇÕES */}
-
-      {/* DADOS PESSOAIS */}
+      {/* 2. DADOS PESSOAIS */}
       <AccordionSection
         id="personal"
         title="Dados Pessoais"
-        icon={<User className="w-5 h-5" />}
-        subtitle="Suas informações principais de contato"
-        isOpen={openSection === 'personal'}
+        subtitle="Nome, contato, localização e links profissionais"
+        icon={<User className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.personal}
         onToggle={() => toggleSection('personal')}
       >
         <div className="space-y-4 pt-2">
-          {/* Essential Fields */}
+          {/* Nome e Cargo Pretendido */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <InputField
-                label="Nome Completo *"
-                value={data.name}
-                onChange={e => update({ name: e.target.value })}
-                placeholder="Ex: Ana Paula Ferreira"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <InputField
-                label="Cargo Pretendido *"
+            <InputField
+              label="Nome Completo *"
+              placeholder="Ex: Maria Silva Santos"
+              value={data.name}
+              onChange={(e) => update({ name: e.target.value })}
+              required
+            />
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-gray-700">
+                  Cargo Pretendido / Objetivo Profissional *
+                </label>
+                <span
+                  className="text-[11px] text-[#004A8D] font-bold cursor-help"
+                  title="Insira o título exato da vaga a qual está se candidatando (ex: Analista Financeiro Pleno) para aumentar sua relevância nos filtros ATS."
+                >
+                  💡 Dica ATS
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="Ex: Assistente Administrativo | Desenvolvedor Frontend"
                 value={data.jobTitle}
-                onChange={e => update({ jobTitle: e.target.value })}
-                placeholder="Ex: Desenvolvedora Full Stack Sênior"
+                onChange={(e) => update({ jobTitle: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
               />
             </div>
+          </div>
+
+          {/* Email e Telefone */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField
               label="E-mail *"
               type="email"
+              placeholder="Ex: maria.santos@email.com"
               value={data.email}
-              onChange={e => update({ email: e.target.value })}
-              placeholder="ana.paula@email.com"
+              onChange={(e) => update({ email: e.target.value })}
+              inputMode="email"
+              required
             />
             <InputField
-              label="Telefone (com DDD) *"
+              label="Telefone / WhatsApp *"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
               value={data.phone}
-              onChange={e => update({ phone: e.target.value })}
-              placeholder="(11) 99999-9999"
-            />
-            <InputField
-              label="Cidade *"
-              value={data.city}
-              onChange={e => update({ city: e.target.value })}
-              placeholder="São Paulo"
-            />
-            <InputField
-              label="Estado (UF) *"
-              value={data.state}
-              onChange={e => update({ state: e.target.value })}
-              placeholder="SP"
-              maxLength={2}
+              onChange={(e) => update({ phone: e.target.value })}
+              inputMode="tel"
+              required
             />
           </div>
 
-          {/* Optional Personal Fields (Activated dynamically via Chips) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* ESTADO (UF) PRIMEIRO & CIDADE DEPOIS DINÂMICA (Insight RH 1) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Estado (UF) *
+              </label>
+              <select
+                value={data.state}
+                onChange={(e) => handleStateChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 transition-all duration-200 shadow-2xs"
+              >
+                <option value="">Selecione o Estado...</option>
+                {BRAZIL_STATES.map((s) => (
+                  <option key={s.sigla} value={s.sigla}>
+                    {s.sigla} - {s.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Cidade *
+              </label>
+              {data.state && citiesList.length > 0 ? (
+                <div className="space-y-1">
+                  <select
+                    value={data.city}
+                    onChange={(e) => update({ city: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 transition-all duration-200 shadow-2xs"
+                  >
+                    <option value="">Selecione a Cidade...</option>
+                    {citiesList.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                    <option value="OUTRA">Outra (Digitar manualmente)...</option>
+                  </select>
+                  {data.city === 'OUTRA' && (
+                    <input
+                      type="text"
+                      placeholder="Digite o nome da sua cidade"
+                      onChange={(e) => update({ city: e.target.value })}
+                      className="w-full mt-1.5 px-3.5 py-2 rounded-xl border border-gray-200 text-sm"
+                    />
+                  )}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  placeholder={data.state ? 'Digite sua cidade' : 'Selecione o Estado primeiro'}
+                  value={data.city}
+                  onChange={(e) => update({ city: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* MÓDULO DE FOTO COM DISCLAIMER DE RH (Insight RH 2) */}
+          {data.enabledPersonalFields.photo && (
+            <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-[#004A8D]" />
+                  <span className="text-xs font-bold text-gray-900">Foto de Perfil do Candidato</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('photo')}
+                  className="text-xs text-red-600 font-bold hover:underline"
+                >
+                  Remover Campo
+                </button>
+              </div>
+
+              {/* Disclaimer de RH */}
+              <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  <strong>Nota de Recomendação de RH:</strong> A inclusão de fotos em currículos{' '}
+                  <strong>não é recomendada</strong> para a maioria das vagas corporativas atuais, pois pode gerar viés em triagens e sistemas ATS, salvo exigência expressa da vaga ou cargos públicos/artísticos.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {data.photo ? (
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-[#004A8D] shadow-sm">
+                    <img src={data.photo} alt="Foto do candidato" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity text-xs"
+                      title="Remover foto"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gray-200 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                    <User className="w-7 h-7" />
+                  </div>
+                )}
+
+                <div>
+                  <input
+                    type="file"
+                    ref={photoInputRef}
+                    accept="image/png, image/jpeg, image/webp"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="photoUploadInput"
+                  />
+                  <label
+                    htmlFor="photoUploadInput"
+                    className="px-3.5 py-2 rounded-xl bg-white border border-gray-300 hover:border-[#004A8D] text-xs font-bold text-gray-700 cursor-pointer inline-flex items-center gap-1.5 transition-all shadow-2xs"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-[#004A8D]" />
+                    <span>{data.photo ? 'Trocar Foto' : 'Selecionar Foto (PNG/JPG)'}</span>
+                  </label>
+                  {data.photo && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="ml-2 text-xs text-red-600 hover:underline font-bold"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VÍDEO APRESENTAÇÃO (YOUTUBE) + MODAL (?) (Insight RH 3) */}
+          {data.enabledPersonalFields.videoUrl && (
+            <div className="p-4 bg-red-50/50 rounded-2xl border border-red-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Video className="w-4 h-4 text-red-600" />
+                  <span className="text-xs font-bold text-gray-900">Vídeo Apresentação (Pitch no YouTube)</span>
+                  <button
+                    type="button"
+                    onClick={onOpenVideoExplainer}
+                    className="text-red-600 hover:text-red-700 transition-colors"
+                    title="O que é Vídeo Pitch? Clique para entender"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('videoUrl')}
+                  className="text-xs text-red-600 font-bold hover:underline"
+                >
+                  Remover
+                </button>
+              </div>
+
+              <input
+                type="url"
+                placeholder="Ex: https://youtu.be/seu-video-pitch (Apenas YouTube)"
+                value={data.videoUrl || ''}
+                onChange={(e) => update({ videoUrl: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+              />
+              <p className="text-[11px] text-gray-500">
+                ⚠️ Aceito apenas links do YouTube (público ou não listado). Será incluído como link direto no currículo.
+              </p>
+            </div>
+          )}
+
+          {/* Campos Opcionais Ativados */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {data.enabledPersonalFields.birthDate && (
               <InputField
-                label="Data de Nascimento"
-                type="date"
+                label="Data de Nascimento / Idade"
+                placeholder="Ex: 25 anos ou 15/04/1999"
                 value={data.birthDate || ''}
-                onChange={e => update({ birthDate: e.target.value })}
+                onChange={(e) => update({ birthDate: e.target.value })}
               />
             )}
+
             {data.enabledPersonalFields.maritalStatus && (
-              <SelectField
-                label="Estado Civil"
-                value={data.maritalStatus || ''}
-                onChange={e => update({ maritalStatus: e.target.value })}
-                options={MARITAL_STATUS}
-              />
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Estado Civil</label>
+                <select
+                  value={data.maritalStatus || ''}
+                  onChange={(e) => update({ maritalStatus: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 transition-all duration-200 shadow-2xs"
+                >
+                  <option value="">Selecione...</option>
+                  {MARITAL_STATUS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
-            {data.enabledPersonalFields.driverLicense && (
-              <InputField
-                label="Carteira de Habilitação (CNH)"
-                value={data.driverLicense || ''}
-                onChange={e => update({ driverLicense: e.target.value })}
-                placeholder="Ex: CNH Categoria B"
-              />
-            )}
+
             {data.enabledPersonalFields.linkedin && (
               <InputField
                 label="LinkedIn"
+                placeholder="Ex: linkedin.com/in/seunome"
                 value={data.linkedin || ''}
-                onChange={e => update({ linkedin: e.target.value })}
-                placeholder="linkedin.com/in/anapaula"
+                onChange={(e) => update({ linkedin: e.target.value })}
               />
             )}
+
             {data.enabledPersonalFields.github && (
               <InputField
                 label="GitHub"
+                placeholder="Ex: github.com/seunome"
                 value={data.github || ''}
-                onChange={e => update({ github: e.target.value })}
-                placeholder="github.com/anapaula"
+                onChange={(e) => update({ github: e.target.value })}
               />
             )}
+
             {data.enabledPersonalFields.portfolio && (
               <InputField
-                label="Portfólio / Website"
+                label="Portfólio / Site Pessoal"
+                placeholder="Ex: seunome.dev ou behance.net/seunome"
                 value={data.portfolio || ''}
-                onChange={e => update({ portfolio: e.target.value })}
-                placeholder="anapaula.dev"
+                onChange={(e) => update({ portfolio: e.target.value })}
               />
             )}
+
+            {data.enabledPersonalFields.driverLicense && (
+              <InputField
+                label="CNH (Carteira de Habilitação)"
+                placeholder="Ex: Categoria B (Carro)"
+                value={data.driverLicense || ''}
+                onChange={(e) => update({ driverLicense: e.target.value })}
+              />
+            )}
+
             {data.enabledPersonalFields.nationality && (
               <InputField
-                label="Nacionalidade"
+                label="Nacionalidade / Naturalidade"
+                placeholder="Ex: Brasileira / São Paulo, SP"
                 value={data.nationality || ''}
-                onChange={e => update({ nationality: e.target.value })}
-                placeholder="Brasileira"
+                onChange={(e) => update({ nationality: e.target.value })}
               />
             )}
           </div>
 
-          {/* CHIPS DE EXPANSÃO INTERNA (DADOS PESSOAIS) */}
-          <div className="pt-3 border-t border-gray-100">
-            <label className="block text-xs font-semibold text-gray-600 mb-2">
-              Adicionar campos opcionais aos Dados Pessoais:
-            </label>
+          {/* CHIPS PARA ADICIONAR CAMPOS PESSOAIS (Estilo Jobseeker) */}
+          <div className="pt-2">
+            <span className="text-xs font-bold text-gray-700 block mb-2">
+              Adicionar campos extras aos Dados Pessoais:
+            </span>
             <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'birthDate', label: 'Data de Nascimento' },
-                { key: 'maritalStatus', label: 'Estado Civil' },
-                { key: 'driverLicense', label: 'Carteira de Motorista' },
-                { key: 'linkedin', label: 'LinkedIn' },
-                { key: 'github', label: 'GitHub' },
-                { key: 'portfolio', label: 'Portfólio' },
-                { key: 'nationality', label: 'Nacionalidade' },
-              ].map(chip => {
-                const isEnabled = data.enabledPersonalFields[chip.key as keyof typeof data.enabledPersonalFields];
-                return (
-                  <button
-                    key={chip.key}
-                    type="button"
-                    onClick={() => togglePersonalField(chip.key as keyof typeof data.enabledPersonalFields)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                      isEnabled
-                        ? 'bg-[#004A8D] text-white shadow-2xs'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                    }`}
-                  >
-                    {isEnabled ? <Check className="w-3.5 h-3.5 text-[#F7941D]" /> : <Plus className="w-3.5 h-3.5 text-gray-500" />}
-                    <span>{chip.label}</span>
-                  </button>
-                );
-              })}
+              {!data.enabledPersonalFields.photo && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('photo')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>Foto de Perfil</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.videoUrl && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('videoUrl')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-red-500 hover:bg-red-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-red-500" />
+                  <span>Vídeo Pitch (YouTube)</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.linkedin && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('linkedin')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>LinkedIn</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.github && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('github')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>GitHub</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.portfolio && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('portfolio')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>Portfólio</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.birthDate && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('birthDate')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>Data de Nascimento / Idade</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.maritalStatus && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('maritalStatus')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>Estado Civil</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.driverLicense && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('driverLicense')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>CNH</span>
+                </button>
+              )}
+
+              {!data.enabledPersonalFields.nationality && (
+                <button
+                  type="button"
+                  onClick={() => togglePersonalField('nationality')}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:border-[#004A8D] text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <span>Nacionalidade</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
       </AccordionSection>
 
-      {/* RESUMO PROFISSIONAL */}
-      {data.enabledSections.summary && (
-        <AccordionSection
-          id="summary"
-          title="Resumo Profissional"
-          icon={<FileText className="w-5 h-5" />}
-          subtitle="Síntese das suas principais qualificações e conquistas"
-          isOpen={openSection === 'summary'}
-          onToggle={() => toggleSection('summary')}
-        >
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500 font-medium">
-                Descreva brevemente sua trajetória e diferenciais.
-              </span>
+      {/* 3. RESUMO PROFISSIONAL / SÍNTESE COM IA CONTEXTUAL (Insight RH 5) */}
+      <AccordionSection
+        id="summary"
+        title="Resumo Profissional / Síntese"
+        subtitle="Breve visão geral da sua trajetória e competências"
+        icon={<FileText className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.summary}
+        onToggle={() => toggleSection('summary')}
+        rightAction={
+          <button
+            type="button"
+            onClick={onOpenSynthesis}
+            className="px-3 py-1.5 rounded-xl bg-[#004A8D]/10 hover:bg-[#004A8D]/20 text-[#004A8D] text-xs font-bold flex items-center gap-1.5 transition-all"
+            title="A IA lê seu cargo e sugere 3 opções de síntese profissional"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#F7941D]" />
+            <span>Gerar com IA</span>
+          </button>
+        }
+      >
+        <div className="space-y-3 pt-2">
+          <TextareaField
+            label="Síntese de Qualificações"
+            rows={4}
+            placeholder="Breve resumo profissional destacando sua bagagem, principais competências, entregas de valor e resultados alcançados..."
+            value={data.summary}
+            onChange={(e) => update({ summary: e.target.value })}
+          />
+          <div className="flex items-center justify-between text-[11px] text-gray-500">
+            <span>💡 Dica: 3 a 5 linhas objetivas são suficientes para encantar recrutadores.</span>
+            <button
+              type="button"
+              onClick={onOpenSynthesis}
+              className="text-[#004A8D] font-bold hover:underline flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3 text-[#F7941D]" />
+              Ver modelos de síntese prontos
+            </button>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* 4. EXPERIÊNCIAS PROFISSIONAIS COM METODOLOGIA STAR (Insight RH 5) */}
+      <AccordionSection
+        id="experience"
+        title="Experiência Profissional"
+        subtitle="Cargos, empresas e principais realizações"
+        icon={<Briefcase className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.experience}
+        onToggle={() => toggleSection('experience')}
+        badgeCount={data.experience.length}
+      >
+        <div className="space-y-4 pt-2">
+          {data.experience.length === 0 ? (
+            <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-2xl p-4">
+              <p className="text-xs text-gray-500 font-medium">Nenhuma experiência adicionada ainda.</p>
               <button
                 type="button"
-                onClick={onOpenSynthesis}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#004A8D]/10 text-[#004A8D] hover:bg-[#004A8D] hover:text-white border border-[#004A8D]/20 transition-all"
+                onClick={() =>
+                  update({
+                    experience: [
+                      ...data.experience,
+                      {
+                        id: uid(),
+                        role: '',
+                        company: '',
+                        startDate: '',
+                        endDate: '',
+                        current: false,
+                        description: '',
+                      },
+                    ],
+                  })
+                }
+                className="mt-2 px-4 py-2 rounded-xl bg-[#004A8D] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#F7941D]" />
-                <span>Gerar com IA</span>
+                <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                Adicionar Experiência
               </button>
             </div>
-            <TextareaField
-              label="Sobre Você"
-              rows={4}
-              value={data.summary}
-              onChange={e => update({ summary: e.target.value })}
-              placeholder="Profissional com mais de 5 anos de experiência na área..."
-            />
-          </div>
-        </AccordionSection>
-      )}
-
-      {/* EXPERIÊNCIA PROFISSIONAL */}
-      {data.enabledSections.experience && (
-        <AccordionSection
-          id="experience"
-          title="Experiência Profissional"
-          icon={<Briefcase className="w-5 h-5" />}
-          subtitle="Seu histórico de empregos e cargos"
-          isOpen={openSection === 'experience'}
-          onToggle={() => toggleSection('experience')}
-          badgeCount={data.experience.length}
-        >
-          <div className="space-y-6 pt-2">
-            {data.experience.map((exp, idx) => (
-              <div
-                key={exp.id}
-                className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-4 relative group"
-              >
+          ) : (
+            data.experience.map((exp, idx) => (
+              <div key={exp.id} className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#004A8D]">
-                    Experiência #{idx + 1}
+                  <span className="text-xs font-bold text-gray-800">
+                    {exp.role || exp.company ? `${exp.role || 'Cargo'} na ${exp.company || 'Empresa'}` : `Experiência ${idx + 1}`}
                   </span>
-                  {data.experience.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeExp(exp.id)}
-                      className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 p-1 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Remover</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => update({ experience: data.experience.filter((e) => e.id !== exp.id) })}
+                    className="text-red-500 hover:text-red-700 p-1 transition-colors"
+                    title="Remover esta experiência"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InputField
-                    label="Cargo / Função *"
+                    label="Cargo *"
+                    placeholder="Ex: Assistente de TI | Analista de Projetos"
                     value={exp.role}
-                    onChange={e => updateExp(exp.id, { role: e.target.value })}
-                    placeholder="Ex: Engenheiro de Software"
+                    onChange={(e) =>
+                      update({
+                        experience: data.experience.map((it) =>
+                          it.id === exp.id ? { ...it, role: e.target.value } : it
+                        ),
+                      })
+                    }
                   />
                   <InputField
                     label="Empresa *"
+                    placeholder="Ex: Tech Solutions Ltda"
                     value={exp.company}
-                    onChange={e => updateExp(exp.id, { company: e.target.value })}
-                    placeholder="Ex: Tech Corp"
+                    onChange={(e) =>
+                      update({
+                        experience: data.experience.map((it) =>
+                          it.id === exp.id ? { ...it, company: e.target.value } : it
+                        ),
+                      })
+                    }
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InputField
-                    label="Mês/Ano Início"
-                    type="month"
+                    label="Período / Ano"
+                    placeholder="Ex: Março de 2022 até o momento ou 2021 - 2023"
                     value={exp.startDate}
-                    onChange={e => updateExp(exp.id, { startDate: e.target.value })}
+                    onChange={(e) =>
+                      update({
+                        experience: data.experience.map((it) =>
+                          it.id === exp.id ? { ...it, startDate: e.target.value } : it
+                        ),
+                      })
+                    }
                   />
-                  <div>
-                    <InputField
-                      label="Mês/Ano Término"
-                      type="month"
-                      value={exp.endDate}
-                      disabled={exp.current}
-                      onChange={e => updateExp(exp.id, { endDate: e.target.value })}
-                    />
-                    <label className="flex items-center gap-2 mt-1.5 text-xs text-gray-700 cursor-pointer">
+                  <div className="flex items-end pb-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700">
                       <input
                         type="checkbox"
                         checked={exp.current}
-                        onChange={e => updateExp(exp.id, { current: e.target.checked })}
+                        onChange={(e) =>
+                          update({
+                            experience: data.experience.map((it) =>
+                              it.id === exp.id ? { ...it, current: e.target.checked } : it
+                            ),
+                          })
+                        }
                         className="rounded text-[#004A8D] focus:ring-[#004A8D]"
                       />
-                      <span>Trabalho atual aqui</span>
+                      <span>Trabalho atualmente nesta empresa</span>
                     </label>
                   </div>
                 </div>
@@ -602,448 +995,762 @@ export default function FormPanel({
                     <button
                       type="button"
                       onClick={() => onOpenStar(exp.id)}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#004A8D] hover:text-[#00386c] bg-[#004A8D]/10 px-2.5 py-1 rounded-md transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-[#004A8D]/10 hover:bg-[#004A8D]/20 text-[#004A8D] text-[11px] font-bold flex items-center gap-1 transition-all"
+                      title="Reescrever descrição utilizando a metodologia STAR (Situação, Tarefa, Ação, Resultado)"
                     >
-                      <Zap className="w-3 h-3 text-[#F7941D]" />
-                      <span>Melhorar com STAR IA</span>
+                      <Sparkles className="w-3 h-3 text-[#F7941D]" />
+                      <span>Melhorar com IA (STAR)</span>
                     </button>
                   </div>
-                  <TextareaField
-                    label=""
+                  <textarea
                     rows={3}
+                    placeholder="Descreva suas principais responsabilidades, projetos entregues e resultados obtidos..."
                     value={exp.description}
-                    onChange={e => updateExp(exp.id, { description: e.target.value })}
-                    placeholder="Desenvolvimento de sistemas escaláveis, liderança..."
+                    onChange={(e) =>
+                      update({
+                        experience: data.experience.map((it) =>
+                          it.id === exp.id ? { ...it, description: e.target.value } : it
+                        ),
+                      })
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 resize-none shadow-2xs"
                   />
                 </div>
               </div>
-            ))}
+            ))
+          )}
 
-            <button
-              type="button"
-              onClick={addExp}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 hover:border-[#004A8D] transition-all flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-[#F7941D]" />
-              <span>Adicionar Outra Experiência</span>
-            </button>
-          </div>
-        </AccordionSection>
-      )}
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                experience: [
+                  ...data.experience,
+                  {
+                    id: uid(),
+                    role: '',
+                    company: '',
+                    startDate: '',
+                    endDate: '',
+                    current: false,
+                    description: '',
+                  },
+                ],
+              })
+            }
+            className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#004A8D]/30 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-[#004A8D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <Plus className="w-4 h-4 text-[#F7941D]" />
+            <span>+ Adicionar Outra Experiência</span>
+          </button>
+        </div>
+      </AccordionSection>
 
-      {/* FORMAÇÃO ACADÊMICA */}
-      {data.enabledSections.education && (
-        <AccordionSection
-          id="education"
-          title="Formação Acadêmica"
-          icon={<GraduationCap className="w-5 h-5" />}
-          subtitle="Cursos superiores, técnicos e pós-graduações"
-          isOpen={openSection === 'education'}
-          onToggle={() => toggleSection('education')}
-          badgeCount={data.education.length}
-        >
-          <div className="space-y-6 pt-2">
-            {data.education.map((edu, idx) => (
-              <div
-                key={edu.id}
-                className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-4 relative"
+      {/* 5. FORMAÇÃO ACADÊMICA */}
+      <AccordionSection
+        id="education"
+        title="Educação / Formação Acadêmica"
+        subtitle="Cursos, graduação, técnicos e especializações"
+        icon={<GraduationCap className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.education}
+        onToggle={() => toggleSection('education')}
+        badgeCount={data.education.length}
+      >
+        <div className="space-y-4 pt-2">
+          {data.education.length === 0 ? (
+            <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-2xl p-4">
+              <p className="text-xs text-gray-500 font-medium">Nenhuma formação acadêmica cadastrada.</p>
+              <button
+                type="button"
+                onClick={() =>
+                  update({
+                    education: [
+                      ...data.education,
+                      {
+                        id: uid(),
+                        degree: 'Graduação / Superior',
+                        course: '',
+                        institution: '',
+                        year: '',
+                        period: 'Noturno',
+                      },
+                    ],
+                  })
+                }
+                className="mt-2 px-4 py-2 rounded-xl bg-[#004A8D] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs"
               >
+                <Plus className="w-3.5 h-3.5 text-[#F7941D]" />
+                Adicionar Formação
+              </button>
+            </div>
+          ) : (
+            data.education.map((edu, idx) => (
+              <div key={edu.id} className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#004A8D]">
-                    Formação #{idx + 1}
+                  <span className="text-xs font-bold text-gray-800">
+                    {edu.course || edu.institution
+                      ? `${edu.degree || 'Formação'}: ${edu.course || ''} (${edu.institution || ''})`
+                      : `Formação ${idx + 1}`}
                   </span>
-                  {data.education.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeEdu(edu.id)}
-                      className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 p-1 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Remover</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => update({ education: data.education.filter((e) => e.id !== edu.id) })}
+                    className="text-red-500 hover:text-red-700 p-1 transition-colors"
+                    title="Remover esta formação"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SelectField
-                    label="Nível / Grau *"
-                    value={edu.degree}
-                    onChange={e => updateEdu(edu.id, { degree: e.target.value })}
-                    options={DEGREES}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Grau de Escolaridade</label>
+                    <select
+                      value={edu.degree}
+                      onChange={(e) =>
+                        update({
+                          education: data.education.map((it) =>
+                            it.id === edu.id ? { ...it, degree: e.target.value } : it
+                          ),
+                        })
+                      }
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {DEGREES.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <InputField
-                    label="Curso / Área *"
+                    label="Curso / Especialidade *"
+                    placeholder="Ex: Análise e Desenvolvimento de Sistemas"
                     value={edu.course}
-                    onChange={e => updateEdu(edu.id, { course: e.target.value })}
-                    placeholder="Ex: Ciência da Computação"
+                    onChange={(e) =>
+                      update({
+                        education: data.education.map((it) =>
+                          it.id === edu.id ? { ...it, course: e.target.value } : it
+                        ),
+                      })
+                    }
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <InputField
                     label="Instituição de Ensino *"
+                    placeholder="Ex: SENAC / USP / FGV"
                     value={edu.institution}
-                    onChange={e => updateEdu(edu.id, { institution: e.target.value })}
-                    placeholder="Ex: Universidade de São Paulo"
+                    onChange={(e) =>
+                      update({
+                        education: data.education.map((it) =>
+                          it.id === edu.id ? { ...it, institution: e.target.value } : it
+                        ),
+                      })
+                    }
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <InputField
-                      label="Ano Conclusão"
-                      value={edu.year}
-                      onChange={e => updateEdu(edu.id, { year: e.target.value })}
-                      placeholder="2023"
-                    />
-                    <SelectField
-                      label="Turno"
+
+                  <InputField
+                    label="Ano de Conclusão / Previsão"
+                    placeholder="Ex: 2025 ou Concluído em 2023"
+                    value={edu.year}
+                    onChange={(e) =>
+                      update({
+                        education: data.education.map((it) =>
+                          it.id === edu.id ? { ...it, year: e.target.value } : it
+                        ),
+                      })
+                    }
+                  />
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Turno</label>
+                    <select
                       value={edu.period}
-                      onChange={e => updateEdu(edu.id, { period: e.target.value })}
-                      options={PERIODS}
-                    />
+                      onChange={(e) =>
+                        update({
+                          education: data.education.map((it) =>
+                            it.id === edu.id ? { ...it, period: e.target.value } : it
+                          ),
+                        })
+                      }
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {PERIODS.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+          )}
 
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                education: [
+                  ...data.education,
+                  {
+                    id: uid(),
+                    degree: 'Graduação / Superior',
+                    course: '',
+                    institution: '',
+                    year: '',
+                    period: 'Noturno',
+                  },
+                ],
+              })
+            }
+            className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#004A8D]/30 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-[#004A8D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <Plus className="w-4 h-4 text-[#F7941D]" />
+            <span>+ Adicionar Outra Formação</span>
+          </button>
+        </div>
+      </AccordionSection>
+
+      {/* 6. COMPETÊNCIAS: HARD & SOFT SKILLS + BOTÃO (?) (Insight RH 4 & 9) */}
+      <AccordionSection
+        id="skills"
+        title="Hard Skills & Soft Skills"
+        subtitle="Competências técnicas e comportamentais personalizadas"
+        icon={<Wrench className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.skills}
+        onToggle={() => toggleSection('skills')}
+        badgeCount={data.hardSkills.length + data.softSkills.length}
+        rightAction={
+          <button
+            type="button"
+            onClick={onOpenSkillsExplainer}
+            className="px-2.5 py-1 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold flex items-center gap-1 transition-all"
+            title="Entenda a diferença entre Hard Skills e Soft Skills"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-[#004A8D]" />
+            <span>O que são?</span>
+          </button>
+        }
+      >
+        <div className="space-y-6 pt-2">
+          {/* HARD SKILLS */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-gray-900">⚙️ Hard Skills (Técnicas)</h4>
+                <p className="text-[11px] text-gray-500">Ferramentas, linguagens e conhecimentos mensuráveis</p>
+              </div>
+              <span className="text-xs font-bold text-[#004A8D]">{data.hardSkills.length} selecionadas</span>
+            </div>
+
+            {/* Input para adicionar Hard Skill customizada (Insight RH 9) */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Digitar Hard Skill personalizada (Ex: Next.js, SAP, AutoCAD...)"
+                value={customHardSkillInput}
+                onChange={(e) => setCustomHardSkillInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomHardSkill())}
+                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+              />
+              <button
+                type="button"
+                onClick={addCustomHardSkill}
+                disabled={!customHardSkillInput.trim()}
+                className="px-4 py-2 bg-[#004A8D] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all"
+              >
+                + Adicionar
+              </button>
+            </div>
+
+            {/* Nuvem de tags ativas com botão remover */}
+            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-gray-50 rounded-xl border border-gray-200">
+              {data.hardSkills.length === 0 ? (
+                <span className="text-[11px] text-gray-400">Nenhuma Hard Skill selecionada. Clique nas sugestões abaixo ou digite acima.</span>
+              ) : (
+                data.hardSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#004A8D] text-white text-xs font-semibold shadow-2xs"
+                  >
+                    <span>{skill}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSkillItem(data.hardSkills, skill, 'hardSkills')}
+                      className="hover:text-[#F7941D] text-white/80 transition-colors"
+                      title="Remover"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+
+            {/* Sugestões Rápidas */}
+            <div>
+              <span className="text-[11px] font-bold text-gray-500 block mb-1.5">💡 Sugestões em alta no mercado:</span>
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                {HARD_SKILLS_SUGGESTIONS.filter((s) => !data.hardSkills.includes(s)).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleSkillItem(data.hardSkills, s, 'hardSkills')}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-gray-700 text-xs font-medium transition-all"
+                  >
+                    + {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* SOFT SKILLS */}
+          <div className="space-y-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-gray-900">🧠 Soft Skills (Comportamentais)</h4>
+                <p className="text-[11px] text-gray-500">Inteligência emocional, comunicação e relacionamento</p>
+              </div>
+              <span className="text-xs font-bold text-[#F7941D]">{data.softSkills.length} selecionadas</span>
+            </div>
+
+            {/* Input para adicionar Soft Skill customizada */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Digitar Soft Skill personalizada (Ex: Storytelling, Mediação de Conflitos...)"
+                value={customSoftSkillInput}
+                onChange={(e) => setCustomSoftSkillInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomSoftSkill())}
+                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+              />
+              <button
+                type="button"
+                onClick={addCustomSoftSkill}
+                disabled={!customSoftSkillInput.trim()}
+                className="px-4 py-2 bg-[#F7941D] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all"
+              >
+                + Adicionar
+              </button>
+            </div>
+
+            {/* Nuvem de tags ativas */}
+            <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-gray-50 rounded-xl border border-gray-200">
+              {data.softSkills.length === 0 ? (
+                <span className="text-[11px] text-gray-400">Nenhuma Soft Skill selecionada. Clique nas sugestões abaixo ou digite acima.</span>
+              ) : (
+                data.softSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F7941D] text-white text-xs font-semibold shadow-2xs"
+                  >
+                    <span>{skill}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSkillItem(data.softSkills, skill, 'softSkills')}
+                      className="hover:text-black text-white/80 transition-colors"
+                      title="Remover"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+
+            {/* Sugestões Rápidas */}
+            <div>
+              <span className="text-[11px] font-bold text-gray-500 block mb-1.5">💡 Sugestões comportamentais:</span>
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                {SOFT_SKILLS_SUGGESTIONS.filter((s) => !data.softSkills.includes(s)).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleSkillItem(data.softSkills, s, 'softSkills')}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-[#F7941D] hover:bg-[#F7941D]/5 text-gray-700 text-xs font-medium transition-all"
+                  >
+                    + {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* 7. TECNOLOGIAS DOMINADAS (Insight RH 9) */}
+      <AccordionSection
+        id="technologies"
+        title="Tecnologias Dominadas"
+        subtitle="Linguagens, frameworks, banco de dados, softwares e ERPs"
+        icon={<Cpu className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.technologies}
+        onToggle={() => toggleSection('technologies')}
+        badgeCount={(data.technologies || []).length}
+      >
+        <div className="space-y-4 pt-2">
+          <p className="text-xs text-gray-600">
+            Destaque as principais ferramentas de trabalho e softwares que você domina com fluência técnica.
+          </p>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Ex: Next.js, Tailwind CSS, PostgreSQL, Docker, AWS S3..."
+              value={customTechInput}
+              onChange={(e) => setCustomTechInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTech())}
+              className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+            />
             <button
               type="button"
-              onClick={addEdu}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 hover:border-[#004A8D] transition-all flex items-center justify-center gap-2"
+              onClick={addCustomTech}
+              disabled={!customTechInput.trim()}
+              className="px-4 py-2 bg-[#004A8D] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all"
             >
-              <Plus className="w-4 h-4 text-[#F7941D]" />
-              <span>Adicionar Outra Formação</span>
+              + Adicionar
             </button>
           </div>
-        </AccordionSection>
-      )}
 
-      {/* COMPETÊNCIAS */}
-      {data.enabledSections.skills && (
-        <AccordionSection
-          id="skills"
-          title="Competências & Habilidades"
-          icon={<Wrench className="w-5 h-5" />}
-          subtitle="Habilidades técnicas e comportamentais"
-          isOpen={openSection === 'skills'}
-          onToggle={() => toggleSection('skills')}
-          badgeCount={data.hardSkills.length + data.softSkills.length}
-        >
-          <div className="space-y-6 pt-2">
-            {/* Hard Skills */}
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-2">
-                Habilidades Técnicas (Hard Skills)
-              </label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {HARD_SKILLS_SUGGESTIONS.map(skill => {
-                  const active = data.hardSkills.includes(skill);
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill('hardSkills', skill)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                        active
-                          ? 'bg-[#004A8D] text-white shadow-2xs'
-                          : 'bg-[#004A8D]/10 text-[#004A8D] hover:bg-[#004A8D]/20'
-                      }`}
-                    >
-                      {active ? `✓ ${skill}` : `+ ${skill}`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-gray-50 rounded-xl border border-gray-200">
+            {(data.technologies || []).length === 0 ? (
+              <span className="text-[11px] text-gray-400">Nenhuma tecnologia adicionada. Digite acima ou clique nas sugestões abaixo.</span>
+            ) : (
+              (data.technologies || []).map((tech) => (
+                <span
+                  key={tech}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-semibold shadow-2xs"
+                >
+                  <span>{tech}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleSkillItem(data.technologies || [], tech, 'technologies')}
+                    className="hover:text-black text-white/80 transition-colors"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
 
-            {/* Soft Skills */}
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-2">
-                Competências Comportamentais (Soft Skills)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {SOFT_SKILLS_SUGGESTIONS.map(skill => {
-                  const active = data.softSkills.includes(skill);
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill('softSkills', skill)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                        active
-                          ? 'bg-[#F7941D] text-white shadow-2xs'
-                          : 'bg-[#F7941D]/15 text-[#D97706] hover:bg-[#F7941D]/25'
-                      }`}
-                    >
-                      {active ? `✓ ${skill}` : `+ ${skill}`}
-                    </button>
-                  );
-                })}
-              </div>
+          {/* Sugestões de Tech */}
+          <div>
+            <span className="text-[11px] font-bold text-gray-500 block mb-1.5">💡 Sugestões de ferramentas e stacks:</span>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {TECH_SUGGESTIONS.filter((t) => !(data.technologies || []).includes(t)).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => toggleSkillItem(data.technologies || [], t, 'technologies')}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-emerald-600 hover:bg-emerald-50 text-gray-700 text-xs font-medium transition-all"
+                >
+                  + {t}
+                </button>
+              ))}
             </div>
           </div>
-        </AccordionSection>
-      )}
+        </div>
+      </AccordionSection>
 
-      {/* IDIOMAS */}
-      {data.enabledSections.languages && (
-        <AccordionSection
-          id="languages"
-          title="Idiomas"
-          icon={<Globe2 className="w-5 h-5" />}
-          subtitle="Nível de fluência em línguas estrangeiras"
-          isOpen={openSection === 'languages'}
-          onToggle={() => toggleSection('languages')}
-          badgeCount={data.languages.length}
-        >
-          <div className="space-y-4 pt-2">
-            {data.languages.map((lang) => (
-              <div key={lang.id} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <InputField
-                    label="Idioma"
-                    value={lang.name}
-                    onChange={e => updateLang(lang.id, { name: e.target.value })}
-                    placeholder="Ex: Inglês"
-                  />
-                </div>
-                <div className="flex-1">
-                  <SelectField
-                    label="Nível de Fluência"
-                    value={lang.level}
-                    onChange={e => updateLang(lang.id, { level: e.target.value })}
-                    options={LANGUAGE_LEVELS}
-                  />
-                </div>
+      {/* 8. IDIOMAS */}
+      <AccordionSection
+        id="languages"
+        title="Idiomas"
+        subtitle="Línguas e nível de proficiência"
+        icon={<Globe2 className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.languages}
+        onToggle={() => toggleSection('languages')}
+        badgeCount={data.languages.length}
+      >
+        <div className="space-y-4 pt-2">
+          {data.languages.map((lang) => (
+            <div key={lang.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <input
+                type="text"
+                placeholder="Ex: Inglês, Espanhol, Francês"
+                value={lang.name}
+                onChange={(e) =>
+                  update({
+                    languages: data.languages.map((l) => (l.id === lang.id ? { ...l, name: e.target.value } : l)),
+                  })
+                }
+                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+              />
+              <select
+                value={lang.level}
+                onChange={(e) =>
+                  update({
+                    languages: data.languages.map((l) => (l.id === lang.id ? { ...l, level: e.target.value } : l)),
+                  })
+                }
+                className="w-36 px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+              >
+                {LANGUAGE_LEVELS.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    {lvl}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => update({ languages: data.languages.filter((l) => l.id !== lang.id) })}
+                className="text-red-500 hover:text-red-700 p-1"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                languages: [...data.languages, { id: uid(), name: '', level: 'Intermediário' }],
+              })
+            }
+            className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#004A8D]/30 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-[#004A8D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <Plus className="w-4 h-4 text-[#F7941D]" />
+            <span>+ Adicionar Idioma</span>
+          </button>
+        </div>
+      </AccordionSection>
+
+      {/* 9. PROJETOS & REALIZAÇÕES COM UPLOAD DE PDF E LINKS AMPLIADOS (Insight RH 8) */}
+      <AccordionSection
+        id="projects"
+        title="Projetos & Realizações"
+        subtitle="Portfólio com anexo de PDF descritivo e links ampliados"
+        icon={<FolderKanban className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.projects}
+        onToggle={() => toggleSection('projects')}
+        badgeCount={data.projects.length}
+      >
+        <div className="space-y-4 pt-2">
+          {data.projects.map((proj, idx) => (
+            <div key={proj.id} className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">
+                  {proj.title ? proj.title : `Projeto ${idx + 1}`}
+                </span>
                 <button
                   type="button"
-                  onClick={() => removeLang(lang.id)}
-                  className="mt-5 text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                  onClick={() => update({ projects: data.projects.filter((p) => p.id !== proj.id) })}
+                  className="text-red-500 hover:text-red-700 p-1"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            ))}
 
-            <button
-              type="button"
-              onClick={addLang}
-              className="py-2.5 px-4 rounded-xl border border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 transition-all flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-[#F7941D]" />
-              <span>Adicionar Idioma</span>
-            </button>
-          </div>
-        </AccordionSection>
-      )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <InputField
+                  label="Nome do Projeto / Realização *"
+                  placeholder="Ex: Plataforma E-commerce B2B"
+                  value={proj.title}
+                  onChange={(e) =>
+                    update({
+                      projects: data.projects.map((p) => (p.id === proj.id ? { ...p, title: e.target.value } : p)),
+                    })
+                  }
+                />
+                <InputField
+                  label="Ano / Período"
+                  placeholder="Ex: 2024"
+                  value={proj.year || ''}
+                  onChange={(e) =>
+                    update({
+                      projects: data.projects.map((p) => (p.id === proj.id ? { ...p, year: e.target.value } : p)),
+                    })
+                  }
+                />
+              </div>
 
-      {/* CERTIFICADOS */}
-      {data.enabledSections.certifications && (
-        <AccordionSection
-          id="certifications"
-          title="Certificados & Cursos Extracurriculares"
-          icon={<Award className="w-5 h-5" />}
-          subtitle="Certificações profissionais e cursos complementares"
-          isOpen={openSection === 'certifications'}
-          onToggle={() => toggleSection('certifications')}
-          badgeCount={data.certifications.length}
-        >
-          <div className="space-y-4 pt-2">
-            {data.certifications.map((cert) => (
-              <div key={cert.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <InputField
-                    label="Nome da Certificação"
-                    value={cert.name}
-                    onChange={e => updateCert(cert.id, { name: e.target.value })}
-                    placeholder="AWS Certified Solutions Architect"
-                  />
-                  <InputField
-                    label="Instituição Emissora"
-                    value={cert.issuer}
-                    onChange={e => updateCert(cert.id, { issuer: e.target.value })}
-                    placeholder="Amazon Web Services"
-                  />
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <InputField
-                        label="Ano"
-                        value={cert.year}
-                        onChange={e => updateCert(cert.id, { year: e.target.value })}
-                        placeholder="2024"
-                      />
-                    </div>
+              {/* Link Ampliado com Legenda de RH (Insight RH 8) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Link do Projeto / Portfólio (GitHub, Behance, Figma, Google Drive, Notícias ou Link Externo)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://behance.net/projeto ou https://github.com/... ou https://drive.google.com/..."
+                  value={proj.link || ''}
+                  onChange={(e) =>
+                    update({
+                      projects: data.projects.map((p) => (p.id === proj.id ? { ...p, link: e.target.value } : p)),
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white"
+                />
+              </div>
+
+              {/* Upload de Documento PDF do Projeto (Insight RH 8) */}
+              <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+                <span className="text-xs font-semibold text-gray-700 block">
+                  📄 Anexo de PDF Descritivo do Projeto / Portfólio (Opcional):
+                </span>
+
+                {proj.pdfFileName ? (
+                  <div className="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-xs">
+                    <span className="font-bold text-[#004A8D] truncate">{proj.pdfFileName}</span>
                     <button
                       type="button"
-                      onClick={() => removeCert(cert.id)}
-                      className="mt-5 text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                      onClick={() => removeProjectPdf(proj.id)}
+                      className="text-red-500 hover:underline text-xs font-bold"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      Remover PDF
                     </button>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      id={`projectPdf-${proj.id}`}
+                      onChange={(e) => handleProjectPdfUpload(proj.id, e)}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor={`projectPdf-${proj.id}`}
+                      className="px-3 py-1.5 rounded-lg border border-gray-300 hover:border-[#004A8D] text-xs font-bold text-gray-700 cursor-pointer inline-flex items-center gap-1.5 transition-all"
+                    >
+                      <FileUp className="w-3.5 h-3.5 text-[#004A8D]" />
+                      <span>Anexar PDF do Projeto (Máx 5MB)</span>
+                    </label>
+                  </div>
+                )}
               </div>
-            ))}
 
-            <button
-              type="button"
-              onClick={addCert}
-              className="py-2.5 px-4 rounded-xl border border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 transition-all flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-[#F7941D]" />
-              <span>Adicionar Certificado</span>
-            </button>
-          </div>
-        </AccordionSection>
-      )}
+              <TextareaField
+                label="Descrição / Resultados do Projeto"
+                rows={2}
+                placeholder="Principais tecnologias empregadas, impacto do projeto e métricas de sucesso..."
+                value={proj.description}
+                onChange={(e) =>
+                  update({
+                    projects: data.projects.map((p) => (p.id === proj.id ? { ...p, description: e.target.value } : p)),
+                  })
+                }
+              />
+            </div>
+          ))}
 
-      {/* PROJETOS & REALIZAÇÕES */}
-      {data.enabledSections.projects && (
-        <AccordionSection
-          id="projects"
-          title="Projetos & Realizações"
-          icon={<FolderKanban className="w-5 h-5" />}
-          subtitle="Projetos relevantes, portfólio e prêmios"
-          isOpen={openSection === 'projects'}
-          onToggle={() => toggleSection('projects')}
-          badgeCount={data.projects.length}
-        >
-          <div className="space-y-4 pt-2">
-            {data.projects.map((proj) => (
-              <div key={proj.id} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-[#004A8D]">Projeto</span>
-                  <button
-                    type="button"
-                    onClick={() => removeProject(proj.id)}
-                    className="text-red-500 hover:text-red-700 text-xs font-bold"
-                  >
-                    Remover
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <InputField
-                    label="Título do Projeto"
-                    value={proj.title}
-                    onChange={e => updateProject(proj.id, { title: e.target.value })}
-                    placeholder="Sistema de Gestão SaaS"
-                  />
-                  <InputField
-                    label="Link (opcional)"
-                    value={proj.link || ''}
-                    onChange={e => updateProject(proj.id, { link: e.target.value })}
-                    placeholder="github.com/projeto"
-                  />
-                </div>
-                <TextareaField
-                  label="Descrição"
-                  rows={2}
-                  value={proj.description}
-                  onChange={e => updateProject(proj.id, { description: e.target.value })}
-                  placeholder="Projeto desenvolvido em React e Node.js..."
-                />
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={addProject}
-              className="py-2.5 px-4 rounded-xl border border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 transition-all flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-[#F7941D]" />
-              <span>Adicionar Projeto</span>
-            </button>
-          </div>
-        </AccordionSection>
-      )}
-
-      {/* SEÇÃO PERSONALIZADA */}
-      {data.enabledSections.custom && (
-        <AccordionSection
-          id="custom"
-          title="Seção Personalizada"
-          icon={<Plus className="w-5 h-5" />}
-          subtitle="Adicione informações adicionais sob medida"
-          isOpen={openSection === 'custom'}
-          onToggle={() => toggleSection('custom')}
-          badgeCount={data.customSections.length}
-        >
-          <div className="space-y-4 pt-2">
-            {data.customSections.map((cs) => (
-              <div key={cs.id} className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-[#004A8D]">Seção Extra</span>
-                  <button
-                    type="button"
-                    onClick={() => removeCustomSection(cs.id)}
-                    className="text-red-500 hover:text-red-700 text-xs font-bold"
-                  >
-                    Remover
-                  </button>
-                </div>
-                <InputField
-                  label="Título da Seção"
-                  value={cs.title}
-                  onChange={e => updateCustomSection(cs.id, { title: e.target.value })}
-                  placeholder="Ex: Trabalho Voluntário"
-                />
-                <TextareaField
-                  label="Conteúdo"
-                  rows={3}
-                  value={cs.description}
-                  onChange={e => updateCustomSection(cs.id, { description: e.target.value })}
-                  placeholder="Descreva detalhes adicionais..."
-                />
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={addCustomSection}
-              className="py-2.5 px-4 rounded-xl border border-[#004A8D]/30 text-[#004A8D] text-xs font-bold hover:bg-[#004A8D]/10 transition-all flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-[#F7941D]" />
-              <span>Adicionar Campo Personalizado</span>
-            </button>
-          </div>
-        </AccordionSection>
-      )}
-
-      {/* BARRA DE ADIÇÃO DE NOVAS SEÇÕES (CHIPS NO RODAPÉ DO FORMULÁRIO) */}
-      <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-xs space-y-3">
-        <div className="flex items-center gap-2">
-          <Plus className="w-4 h-4 text-[#004A8D]" />
-          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-            Adicionar Seções Adicionais ao Currículo
-          </h3>
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                projects: [
+                  ...data.projects,
+                  {
+                    id: uid(),
+                    title: '',
+                    description: '',
+                    link: '',
+                    year: '',
+                  },
+                ],
+              })
+            }
+            className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#004A8D]/30 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-[#004A8D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <Plus className="w-4 h-4 text-[#F7941D]" />
+            <span>+ Adicionar Projeto ou Realização</span>
+          </button>
         </div>
-        <p className="text-xs text-gray-500">
-          Clique nos chips abaixo para ativar ou ocultar seções no seu currículo:
-        </p>
+      </AccordionSection>
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          {[
-            { key: 'summary', label: 'Resumo Profissional' },
-            { key: 'experience', label: 'Experiência Profissional' },
-            { key: 'education', label: 'Formação Acadêmica' },
-            { key: 'skills', label: 'Competências' },
-            { key: 'languages', label: 'Idiomas' },
-            { key: 'certifications', label: 'Certificados & Cursos' },
-            { key: 'projects', label: 'Projetos & Realizações' },
-            { key: 'custom', label: 'Seção Personalizada' },
-          ].map(chip => {
-            const isEnabled = data.enabledSections[chip.key as keyof typeof data.enabledSections];
-            return (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => toggleMainSection(chip.key as keyof typeof data.enabledSections)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  isEnabled
-                    ? 'bg-[#004A8D] text-white shadow-xs hover:bg-[#00386c]'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                }`}
-              >
-                {isEnabled ? <Check className="w-3.5 h-3.5 text-[#F7941D]" /> : <Plus className="w-3.5 h-3.5 text-gray-500" />}
-                <span>{chip.label}</span>
-              </button>
-            );
-          })}
+      {/* 10. CERTIFICAÇÕES */}
+      <AccordionSection
+        id="certifications"
+        title="Cursos Complementares & Certificações"
+        subtitle="Cursos livres, licenças e certificados profissionais"
+        icon={<Award className="w-5 h-5 text-[#004A8D]" />}
+        isOpen={openSections.certifications}
+        onToggle={() => toggleSection('certifications')}
+        badgeCount={data.certifications.length}
+      >
+        <div className="space-y-4 pt-2">
+          {data.certifications.map((cert) => (
+            <div key={cert.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3 relative">
+              <input
+                type="text"
+                placeholder="Nome do Curso / Certificação"
+                value={cert.name}
+                onChange={(e) =>
+                  update({
+                    certifications: data.certifications.map((c) =>
+                      c.id === cert.id ? { ...c, name: e.target.value } : c
+                    ),
+                  })
+                }
+                className="px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+              />
+              <input
+                type="text"
+                placeholder="Instituição Emissora (Ex: Udemy, Alura)"
+                value={cert.issuer}
+                onChange={(e) =>
+                  update({
+                    certifications: data.certifications.map((c) =>
+                      c.id === cert.id ? { ...c, issuer: e.target.value } : c
+                    ),
+                  })
+                }
+                className="px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ano / Carga (Ex: 2024 - 40h)"
+                  value={cert.year}
+                  onChange={(e) =>
+                    update({
+                      certifications: data.certifications.map((c) =>
+                        c.id === cert.id ? { ...c, year: e.target.value } : c
+                      ),
+                    })
+                  }
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => update({ certifications: data.certifications.filter((c) => c.id !== cert.id) })}
+                  className="text-red-500 hover:text-red-700 p-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                certifications: [...data.certifications, { id: uid(), name: '', issuer: '', year: '' }],
+              })
+            }
+            className="w-full py-2.5 rounded-xl border-2 border-dashed border-[#004A8D]/30 hover:border-[#004A8D] hover:bg-[#004A8D]/5 text-[#004A8D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <Plus className="w-4 h-4 text-[#F7941D]" />
+            <span>+ Adicionar Certificação / Curso</span>
+          </button>
+        </div>
+      </AccordionSection>
+
+      {/* 11. NOTA DE RODAPÉ EXPLICATIVA DO FORMULÁRIO (Insight RH 4) */}
+      <div className="bg-blue-50/70 border border-blue-200/90 rounded-2xl p-4 text-xs text-[#004A8D] flex items-start gap-3 shadow-2xs">
+        <Info className="w-5 h-5 text-[#F7941D] shrink-0 mt-0.5" />
+        <div className="text-[11.5px] leading-relaxed">
+          <strong className="block text-gray-900 mb-0.5">Como personalizar seu documento:</strong>
+          Utilize os botões <strong className="text-[#004A8D]">+</strong> ao final de cada seção para incluir novos campos ou o ícone de lixeira (<Trash2 className="w-3.5 h-3.5 inline text-red-500" />) para remover informações não obrigatórias.
         </div>
       </div>
     </div>

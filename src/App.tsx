@@ -15,63 +15,39 @@ import AtsModal from './components/modals/AtsModal';
 import ExportModal from './components/modals/ExportModal';
 import ImportModal from './components/modals/ImportModal';
 import TranslationModal from './components/modals/TranslationModal';
+import CanvaModal from './components/modals/CanvaModal';
+import VideoPitchModal from './components/modals/VideoPitchModal';
+import SkillsExplainerModal from './components/modals/SkillsExplainerModal';
 
 import { exportToWord } from './utils/wordExport';
 
+// INICIALIZAÇÃO TOTALMENTE LIMPA POR PADRÃO (Insight RH 6)
 const DEFAULT_DATA: ResumeData = {
-  name: 'Ana Paula Ferreira',
-  jobTitle: 'Desenvolvedora Full Stack Sênior',
-  email: 'ana.paula@exemplo.com',
-  phone: '(11) 98765-4321',
-  city: 'São Paulo',
-  state: 'SP',
+  name: '',
+  jobTitle: '',
+  email: '',
+  phone: '',
+  state: '',
+  city: '',
 
   birthDate: '',
-  maritalStatus: 'Solteiro(a)',
+  maritalStatus: '',
   driverLicense: '',
-  linkedin: 'linkedin.com/in/anapaula',
-  github: 'github.com/anapaula',
+  linkedin: '',
+  github: '',
   portfolio: '',
-  nationality: 'Brasileira',
+  nationality: '',
+  photo: '',
+  videoUrl: '',
 
-  summary:
-    'Engenheira de Software com mais de 6 anos de experiência em desenvolvimento web full stack, arquitetura de sistemas distribuídos e liderança técnica. Especialista em React, Node.js, TypeScript e ecossistema cloud AWS.',
-  education: [
-    {
-      id: 'edu1',
-      degree: 'Graduação',
-      course: 'Ciência da Computação',
-      institution: 'Universidade de São Paulo (USP)',
-      year: '2021',
-      period: 'Noturno',
-    },
-  ],
-  experience: [
-    {
-      id: 'exp1',
-      role: 'Engenheira de Software Sênior',
-      company: 'Tech Solutions SA',
-      startDate: '2022-03',
-      endDate: '',
-      current: true,
-      description:
-        'Liderança técnica no desenvolvimento da nova plataforma de microsserviços. Redução de 40% na latência das APIs principais e mentoria de 5 desenvolvedores plenos.',
-    },
-  ],
-  hardSkills: ['React', 'Node.js', 'TypeScript', 'Docker', 'AWS', 'SQL'],
-  softSkills: ['Liderança', 'Comunicação', 'Resolução de Conflitos', 'Trabalho em Equipe'],
-  languages: [
-    { id: 'lang1', name: 'Inglês', level: 'Avançado' },
-    { id: 'lang2', name: 'Espanhol', level: 'Intermediário' },
-  ],
-  certifications: [
-    {
-      id: 'cert1',
-      name: 'AWS Certified Solutions Architect',
-      issuer: 'Amazon Web Services',
-      year: '2023',
-    },
-  ],
+  summary: '',
+  education: [],
+  experience: [],
+  hardSkills: [],
+  softSkills: [],
+  technologies: [],
+  languages: [],
+  certifications: [],
   projects: [],
   customSections: [],
 
@@ -80,20 +56,23 @@ const DEFAULT_DATA: ResumeData = {
     experience: true,
     education: true,
     skills: true,
+    technologies: true,
     languages: true,
     certifications: true,
-    projects: false,
+    projects: true,
     custom: false,
   },
 
   enabledPersonalFields: {
     birthDate: false,
-    maritalStatus: true,
+    maritalStatus: false,
     driverLicense: false,
-    linkedin: true,
-    github: true,
+    linkedin: false,
+    github: false,
     portfolio: false,
     nationality: false,
+    photo: false,
+    videoUrl: false,
   },
 
   design: {
@@ -102,26 +81,28 @@ const DEFAULT_DATA: ResumeData = {
     fontFamily: 'Plus Jakarta Sans',
     fontSize: 'md',
     spacing: 'normal',
+    layoutMode: 'full',
   },
 };
 
 function computeScore(data: ResumeData): number {
-  let s = 15;
+  let s = 10;
   if (data.name) s += 15;
   if (data.email) s += 5;
   if (data.phone) s += 5;
+  if (data.state && data.city) s += 5;
   if (data.jobTitle) s += 10;
-  if (data.summary && data.summary.length > 50) s += 15;
+  if (data.summary && data.summary.length > 40) s += 15;
   if (data.experience.some((e) => e.role && e.company)) s += 15;
   if (data.education.some((e) => e.course || e.institution)) s += 10;
   if (data.hardSkills.length >= 3) s += 5;
-  if (data.languages.some((l) => l.name)) s += 5;
+  if (data.softSkills.length >= 2) s += 5;
   return Math.min(s, 100);
 }
 
 export default function App() {
   const [data, setData] = useState<ResumeData>(() => {
-    const saved = localStorage.getItem('curriculo-express-data-jobseeker');
+    const saved = localStorage.getItem('curriculo-express-data-jobseeker-v2');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -140,7 +121,7 @@ export default function App() {
 
   // Auto-save to localStorage
   useEffect(() => {
-    localStorage.setItem('curriculo-express-data-jobseeker', JSON.stringify(data));
+    localStorage.setItem('curriculo-express-data-jobseeker-v2', JSON.stringify(data));
   }, [data]);
 
   // Keyboard shortcut listener (Esc closes drawer & modals)
@@ -199,11 +180,15 @@ export default function App() {
             onChange={setData}
             onOpenSynthesis={() => setModal('synthesis')}
             onOpenStar={(expId) => {
-              setActiveExpId(expId);
+              setActiveExpId(expId || data.experience[0]?.id || '');
               setModal('star');
             }}
             onOpenReview={() => setModal('review')}
-            onOpenImportModal={() => setModal('import')}
+            onOpenAts={() => setModal('ats')}
+            onOpenImport={() => setModal('import')}
+            onOpenCanva={() => setModal('canva')}
+            onOpenVideoExplainer={() => setModal('videoExplainer')}
+            onOpenSkillsExplainer={() => setModal('skillsExplainer')}
           />
         )}
 
@@ -279,7 +264,7 @@ export default function App() {
 
       {modal === 'review' && (
         <ReviewModal
-          onApply={() => addToast('✓ Correções gramaticais e de impacto aplicadas!')}
+          onApply={() => addToast('✓ Correções gramaticais e de tom aplicadas!')}
           onClose={() => setModal(null)}
         />
       )}
@@ -311,6 +296,7 @@ export default function App() {
       {modal === 'import' && (
         <ImportModal
           onClose={() => setModal(null)}
+          onOpenCanva={() => setModal('canva')}
           onImportData={(imported) => {
             setData((d) => ({
               ...d,
@@ -322,6 +308,18 @@ export default function App() {
             addToast('✓ Perfil importado com sucesso!');
           }}
         />
+      )}
+
+      {modal === 'canva' && (
+        <CanvaModal onClose={() => setModal(null)} />
+      )}
+
+      {modal === 'videoExplainer' && (
+        <VideoPitchModal onClose={() => setModal(null)} />
+      )}
+
+      {modal === 'skillsExplainer' && (
+        <SkillsExplainerModal onClose={() => setModal(null)} />
       )}
 
       {modal === 'translate' && (

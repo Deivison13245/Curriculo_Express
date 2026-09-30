@@ -12,6 +12,16 @@ import {
   Calendar,
   MapPin,
   Globe2,
+  Video,
+  Play,
+  FileUp,
+  Cpu,
+  Award,
+  Briefcase,
+  GraduationCap,
+  Wrench,
+  Sparkles,
+  ExternalLink,
 } from 'lucide-react';
 
 interface PreviewPanelProps {
@@ -32,22 +42,30 @@ export default function PreviewPanel({
   const [zoom, setZoom] = useState(100);
 
   const { design } = data;
-  const primaryColor = design.primaryColor || '#7C3AED';
+  const primaryColor = design.primaryColor || '#004A8D';
+  const isCompact = design.layoutMode === 'compact';
 
   const fullLocation = [data.city, data.state].filter(Boolean).join(' – ');
 
-  // Padding & spacing based on design settings
-  const paddingMap = {
-    compact: 'p-6 sm:p-8',
-    normal: 'p-8 sm:p-12',
-    spacious: 'p-10 sm:p-16',
-  };
+  // Spacing & padding maps
+  const paddingClass = isCompact
+    ? 'p-6 sm:p-8'
+    : design.spacing === 'compact'
+    ? 'p-6 sm:p-8'
+    : design.spacing === 'spacious'
+    ? 'p-10 sm:p-14'
+    : 'p-8 sm:p-12';
 
-  const fontSizeMap = {
-    sm: 'text-[10px]',
-    md: 'text-[11px]',
-    lg: 'text-[12px]',
-  };
+  const sectionSpacingClass = isCompact ? 'space-y-3' : 'space-y-5';
+  const itemSpacingClass = isCompact ? 'space-y-1.5' : 'space-y-2.5';
+
+  const fontSizeClass = isCompact
+    ? 'text-[10px]'
+    : design.fontSize === 'sm'
+    ? 'text-[10.5px]'
+    : design.fontSize === 'lg'
+    ? 'text-[12px]'
+    : 'text-[11px]';
 
   return (
     <div className="flex flex-col items-center space-y-4 pb-24 max-w-5xl mx-auto">
@@ -56,7 +74,7 @@ export default function PreviewPanel({
         {/* Zoom controls */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setZoom(z => Math.max(z - 10, 60))}
+            onClick={() => setZoom((z) => Math.max(z - 10, 60))}
             className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
             title="Reduzir Zoom"
           >
@@ -64,7 +82,7 @@ export default function PreviewPanel({
           </button>
           <span className="text-xs font-bold text-gray-700 w-12 text-center">{zoom}%</span>
           <button
-            onClick={() => setZoom(z => Math.min(z + 10, 150))}
+            onClick={() => setZoom((z) => Math.min(z + 10, 150))}
             className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
             title="Aumentar Zoom"
           >
@@ -76,6 +94,12 @@ export default function PreviewPanel({
           >
             100%
           </button>
+        </div>
+
+        {/* Indicador de Modo */}
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>{isCompact ? 'Visualização Compacta (1 Folha)' : 'Visualização Completa'}</span>
         </div>
 
         {/* Action Buttons */}
@@ -114,294 +138,317 @@ export default function PreviewPanel({
       {/* A4 Sheet Preview Container */}
       <div className="w-full flex justify-center overflow-x-auto p-4">
         <div
+          id="resumePrintContainer"
           style={{
             transform: `scale(${zoom / 100})`,
             transformOrigin: 'top center',
             fontFamily: design.fontFamily || 'Plus Jakarta Sans',
           }}
-          className="transition-transform duration-200"
+          className={`w-full max-w-[800px] min-h-[1130px] bg-white text-gray-900 shadow-2xl border border-gray-200 rounded-sm transition-transform duration-200 ${paddingClass} ${fontSizeClass} flex flex-col justify-between`}
         >
-          <div
-            id="resume-preview"
-            className={`w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-sm ${
-              paddingMap[design.spacing || 'normal']
-            } ${fontSizeMap[design.fontSize || 'md']} text-gray-900 leading-relaxed border border-gray-100 relative`}
-          >
-            {/* Template Variant 1: JOBSEEKER MODERN */}
-            {design.template === 'jobseeker' ? (
-              <div>
-                {/* Header Banner */}
-                <div
-                  className="p-6 rounded-2xl text-white mb-6 shadow-sm"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <div className={sectionSpacingClass}>
+            {/* CABEÇALHO DO CURRÍCULO */}
+            <div className={`border-b-2 pb-4 ${isCompact ? 'mb-2 pb-2.5' : 'mb-4'}`} style={{ borderColor: primaryColor }}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h1
+                    className={`font-black tracking-tight ${
+                      isCompact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
+                    }`}
+                    style={{ color: primaryColor }}
+                  >
                     {data.name || 'Seu Nome Completo'}
                   </h1>
+
                   {data.jobTitle && (
-                    <div className="text-sm font-semibold opacity-90 mt-1">
+                    <p className={`font-bold text-gray-700 mt-0.5 ${isCompact ? 'text-xs' : 'text-sm'}`}>
                       {data.jobTitle}
-                    </div>
+                    </p>
                   )}
 
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs opacity-80 pt-2 border-t border-white/20">
-                    {data.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {data.email}</span>}
-                    {data.phone && <span className="flex items-center gap-1"><PhoneIcon className="w-3.5 h-3.5" /> {data.phone}</span>}
-                    {fullLocation && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {fullLocation}</span>}
-                    {data.enabledPersonalFields.linkedin && data.linkedin && (
-                      <span className="flex items-center gap-1"><Globe2 className="w-3.5 h-3.5" /> {data.linkedin}</span>
+                  {/* Informações de Contato */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-600 mt-2 text-[10.5px]">
+                    {fullLocation && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        {fullLocation}
+                      </span>
                     )}
-                    {data.enabledPersonalFields.github && data.github && (
-                      <span className="flex items-center gap-1"><Globe2 className="w-3.5 h-3.5" /> {data.github}</span>
+
+                    {data.phone && (
+                      <span>• {data.phone}</span>
                     )}
-                    {data.enabledPersonalFields.portfolio && data.portfolio && (
-                      <span className="flex items-center gap-1"><Globe2 className="w-3.5 h-3.5" /> {data.portfolio}</span>
+
+                    {data.email && (
+                      <span>• {data.email}</span>
+                    )}
+
+                    {data.maritalStatus && (
+                      <span>• {data.maritalStatus}</span>
+                    )}
+
+                    {data.birthDate && (
+                      <span>• {data.birthDate}</span>
+                    )}
+
+                    {data.nationality && (
+                      <span>• {data.nationality}</span>
+                    )}
+                  </div>
+
+                  {/* Links Profissionais & Vídeo Pitch */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#004A8D] font-medium mt-1.5 text-[10.5px]">
+                    {data.linkedin && (
+                      <a href={`https://${data.linkedin.replace(/^https?:\/\//, '')}`} target="_blank" rel="noreferrer" className="hover:underline">
+                        LinkedIn: {data.linkedin.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, '')}
+                      </a>
+                    )}
+
+                    {data.github && (
+                      <a href={`https://${data.github.replace(/^https?:\/\//, '')}`} target="_blank" rel="noreferrer" className="hover:underline">
+                        • GitHub: {data.github.replace(/^https?:\/\/(www\.)?github\.com\//, '')}
+                      </a>
+                    )}
+
+                    {data.portfolio && (
+                      <a href={`https://${data.portfolio.replace(/^https?:\/\//, '')}`} target="_blank" rel="noreferrer" className="hover:underline">
+                        • Portfólio: {data.portfolio.replace(/^https?:\/\//, '')}
+                      </a>
+                    )}
+
+                    {data.videoUrl && (
+                      <a
+                        href={data.videoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-red-600 font-bold hover:underline bg-red-50 px-1.5 py-0.5 rounded"
+                      >
+                        <Play className="w-3 h-3 fill-red-600" />
+                        <span>Vídeo Apresentação</span>
+                      </a>
                     )}
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* Standard Header for Minimalist / Executive / Modern */
-              <div className="border-b-2 pb-5 mb-5" style={{ borderColor: primaryColor }}>
-                <h1
-                  className="text-2xl sm:text-3xl font-extrabold tracking-tight"
-                  style={{ color: primaryColor }}
-                >
-                  {data.name || 'Seu Nome Completo'}
-                </h1>
-                {data.jobTitle && (
-                  <div className="text-sm font-bold text-gray-700 mt-1 uppercase tracking-wider">
-                    {data.jobTitle}
+
+                {/* FOTO DO CANDIDATO (Se presente) */}
+                {data.photo && (
+                  <div className="shrink-0">
+                    <img
+                      src={data.photo}
+                      alt={data.name}
+                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 shadow-xs"
+                      style={{ borderColor: primaryColor }}
+                    />
                   </div>
                 )}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-600 font-medium">
-                  {data.email && <span>📧 {data.email}</span>}
-                  {data.phone && <span>📱 {data.phone}</span>}
-                  {fullLocation && <span>📍 {fullLocation}</span>}
-                  {data.enabledPersonalFields.linkedin && data.linkedin && (
-                    <span>🔗 {data.linkedin}</span>
+              </div>
+            </div>
+
+            {/* SÍNTESE PROFISSIONAL */}
+            {data.summary && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-1.5 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Síntese de Qualificações
+                </h2>
+                <p className="text-gray-700 leading-relaxed text-justify">{data.summary}</p>
+              </div>
+            )}
+
+            {/* EXPERIÊNCIA PROFISSIONAL */}
+            {data.experience && data.experience.length > 0 && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-2 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Experiências Profissionais
+                </h2>
+                <div className={itemSpacingClass}>
+                  {data.experience.map((exp) => (
+                    <div key={exp.id}>
+                      <div className="flex items-baseline justify-between">
+                        <h3 className="font-bold text-gray-900 text-[11.5px]">{exp.role}</h3>
+                        {exp.startDate && <span className="text-[10px] text-gray-500 font-medium">{exp.startDate}</span>}
+                      </div>
+                      {exp.company && <p className="font-semibold text-gray-700 text-[10.5px]">{exp.company}</p>}
+                      {exp.description && (
+                        <p className="text-gray-600 mt-1 leading-relaxed text-justify whitespace-pre-line">
+                          {exp.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* EDUCAÇÃO / FORMAÇÃO ACADÊMICA */}
+            {data.education && data.education.length > 0 && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-2 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Formação Acadêmica
+                </h2>
+                <div className={itemSpacingClass}>
+                  {data.education.map((edu) => (
+                    <div key={edu.id} className="flex items-baseline justify-between">
+                      <div>
+                        <span className="font-bold text-gray-900">{edu.course || edu.degree}</span>
+                        {edu.institution && <span className="text-gray-600"> — {edu.institution}</span>}
+                        {edu.period && <span className="text-gray-500 text-[10px]"> ({edu.period})</span>}
+                      </div>
+                      {edu.year && <span className="text-[10px] text-gray-500 font-medium shrink-0 ml-2">{edu.year}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TECNOLOGIAS DOMINADAS (Insight RH 9) */}
+            {data.technologies && data.technologies.length > 0 && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-1.5 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Tecnologias Dominadas & Ferramentas
+                </h2>
+                <div className="flex flex-wrap gap-1.5">
+                  {data.technologies.map((t) => (
+                    <span
+                      key={t}
+                      className="px-2 py-0.5 rounded bg-gray-100 text-gray-800 text-[10.5px] font-medium border border-gray-200"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* HARD & SOFT SKILLS */}
+            {(data.hardSkills.length > 0 || data.softSkills.length > 0) && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-1.5 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Principais Competências
+                </h2>
+                <div className="space-y-1">
+                  {data.hardSkills.length > 0 && (
+                    <p className="text-gray-700">
+                      <strong className="text-gray-900">Hard Skills:</strong> {data.hardSkills.join(' • ')}
+                    </p>
                   )}
-                  {data.enabledPersonalFields.driverLicense && data.driverLicense && (
-                    <span>🚗 {data.driverLicense}</span>
+                  {data.softSkills.length > 0 && (
+                    <p className="text-gray-700">
+                      <strong className="text-gray-900">Soft Skills:</strong> {data.softSkills.join(' • ')}
+                    </p>
                   )}
                 </div>
               </div>
             )}
 
-            {/* SEÇÕES DO CURRÍCULO */}
+            {/* CURSOS & CERTIFICAÇÕES */}
+            {data.certifications && data.certifications.length > 0 && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-1.5 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Cursos Complementares & Certificações
+                </h2>
+                <div className="space-y-1">
+                  {data.certifications.map((c) => (
+                    <div key={c.id} className="flex items-baseline justify-between text-gray-700">
+                      <span>
+                        <strong className="text-gray-900">{c.name}</strong>
+                        {c.issuer && <span> — {c.issuer}</span>}
+                      </span>
+                      {c.year && <span className="text-[10px] text-gray-500 shrink-0 ml-2">{c.year}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* 1. Resumo Profissional */}
-            {data.enabledSections.summary && data.summary && (
-              <div className="mb-6">
-                <SectionHeader title="Resumo Profissional" color={primaryColor} />
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                  {data.summary}
+            {/* PROJETOS & REALIZAÇÕES (COM ANEXOS PDF E LINKS) */}
+            {data.projects && data.projects.length > 0 && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-1.5 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Projetos & Portfólio
+                </h2>
+                <div className={itemSpacingClass}>
+                  {data.projects.map((proj) => (
+                    <div key={proj.id}>
+                      <div className="flex items-baseline justify-between">
+                        <h3 className="font-bold text-gray-900 text-[11px]">{proj.title}</h3>
+                        {proj.year && <span className="text-[10px] text-gray-500">{proj.year}</span>}
+                      </div>
+                      {proj.link && (
+                        <a href={proj.link} target="_blank" rel="noreferrer" className="text-[#004A8D] font-medium text-[10px] hover:underline block truncate">
+                          🔗 {proj.link}
+                        </a>
+                      )}
+                      {proj.pdfFileName && (
+                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-0.5 font-medium">
+                          📄 Anexo: {proj.pdfFileName}
+                        </span>
+                      )}
+                      {proj.description && <p className="text-gray-600 mt-0.5 leading-relaxed">{proj.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* IDIOMAS */}
+            {data.languages && data.languages.length > 0 && (
+              <div>
+                <h2
+                  className={`font-bold uppercase tracking-wider border-b pb-0.5 mb-1.5 ${
+                    isCompact ? 'text-[11px]' : 'text-xs'
+                  }`}
+                  style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+                >
+                  Idiomas
+                </h2>
+                <p className="text-gray-700">
+                  {data.languages.map((l) => `${l.name} (${l.level})`).join(' • ')}
                 </p>
               </div>
             )}
+          </div>
 
-            {/* 2. Experiência Profissional */}
-            {data.enabledSections.experience && data.experience.some(e => e.role || e.company) && (
-              <div className="mb-6">
-                <SectionHeader title="Experiência Profissional" color={primaryColor} />
-                <div className="space-y-4">
-                  {data.experience
-                    .filter(e => e.role || e.company)
-                    .map((exp) => (
-                      <div key={exp.id}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-bold text-gray-900">{exp.role || '—'}</div>
-                            <div className="font-semibold text-xs" style={{ color: primaryColor }}>
-                              {exp.company}
-                            </div>
-                          </div>
-                          <div className="text-[11px] text-gray-500 font-medium shrink-0">
-                            {exp.startDate} {exp.startDate || exp.endDate ? '–' : ''}{' '}
-                            {exp.current ? 'Atual' : exp.endDate}
-                          </div>
-                        </div>
-                        {exp.description && (
-                          <p className="text-gray-700 mt-1.5 leading-relaxed whitespace-pre-line">
-                            {exp.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* 3. Formação Acadêmica */}
-            {data.enabledSections.education && data.education.some(e => e.course || e.institution) && (
-              <div className="mb-6">
-                <SectionHeader title="Formação Acadêmica" color={primaryColor} />
-                <div className="space-y-3">
-                  {data.education
-                    .filter(e => e.course || e.institution)
-                    .map((edu) => (
-                      <div key={edu.id} className="flex justify-between items-start">
-                        <div>
-                          <div className="font-bold text-gray-900">
-                            {edu.degree} {edu.course && `– ${edu.course}`}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            {edu.institution} {edu.period && `(${edu.period})`}
-                          </div>
-                        </div>
-                        {edu.year && (
-                          <div className="text-[11px] text-gray-500 font-medium">{edu.year}</div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* 4. Competências */}
-            {data.enabledSections.skills &&
-              (data.hardSkills.length > 0 || data.softSkills.length > 0) && (
-                <div className="mb-6">
-                  <SectionHeader title="Competências & Habilidades" color={primaryColor} />
-                  {data.hardSkills.length > 0 && (
-                    <div className="mb-3">
-                      <div className="text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
-                        Habilidades Técnicas:
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {data.hardSkills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {data.softSkills.length > 0 && (
-                    <div>
-                      <div className="text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
-                        Competências Comportamentais:
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {data.softSkills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-            {/* 5. Idiomas */}
-            {data.enabledSections.languages && data.languages.some(l => l.name) && (
-              <div className="mb-6">
-                <SectionHeader title="Idiomas" color={primaryColor} />
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {data.languages
-                    .filter(l => l.name)
-                    .map((lang) => (
-                      <div key={lang.id} className="text-xs">
-                        <span className="font-bold text-gray-900">{lang.name}</span>
-                        {lang.level && <span className="text-gray-500"> ({lang.level})</span>}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* 6. Certificados */}
-            {data.enabledSections.certifications && data.certifications.some(c => c.name) && (
-              <div className="mb-6">
-                <SectionHeader title="Certificações & Cursos" color={primaryColor} />
-                <div className="space-y-2">
-                  {data.certifications
-                    .filter(c => c.name)
-                    .map((cert) => (
-                      <div key={cert.id} className="flex justify-between items-start text-xs">
-                        <div>
-                          <span className="font-bold text-gray-900">{cert.name}</span>
-                          {cert.issuer && <span className="text-gray-600"> — {cert.issuer}</span>}
-                        </div>
-                        {cert.year && <span className="text-gray-500 font-medium">{cert.year}</span>}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* 7. Projetos */}
-            {data.enabledSections.projects && data.projects.some(p => p.title) && (
-              <div className="mb-6">
-                <SectionHeader title="Projetos & Realizações" color={primaryColor} />
-                <div className="space-y-3">
-                  {data.projects
-                    .filter(p => p.title)
-                    .map((proj) => (
-                      <div key={proj.id}>
-                        <div className="font-bold text-gray-900 text-xs">
-                          {proj.title}{' '}
-                          {proj.link && (
-                            <span className="font-normal text-purple-600 hover:underline">
-                              ({proj.link})
-                            </span>
-                          )}
-                        </div>
-                        {proj.description && (
-                          <p className="text-gray-700 text-xs mt-1">{proj.description}</p>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* 8. Seções Personalizadas */}
-            {data.enabledSections.custom && data.customSections.some(cs => cs.title) && (
-              <div className="mb-6">
-                {data.customSections
-                  .filter(cs => cs.title)
-                  .map((cs) => (
-                    <div key={cs.id} className="mb-4">
-                      <SectionHeader title={cs.title} color={primaryColor} />
-                      <p className="text-gray-700 text-xs whitespace-pre-line">{cs.description}</p>
-                    </div>
-                  ))}
-              </div>
-            )}
+          {/* Rodapé discreto padrão */}
+          <div className="pt-4 mt-6 border-t border-gray-100 text-[9px] text-gray-400 text-center">
+            Documento gerado e formatado pelo Currículo Express Senac
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function SectionHeader({ title, color }: { title: string; color: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-1.5 h-4 rounded-full" style={{ backgroundColor: color }} />
-      <h3
-        className="text-xs font-black uppercase tracking-wider text-gray-900"
-        style={{ color }}
-      >
-        {title}
-      </h3>
-      <div className="flex-1 border-b border-gray-200/80 ml-2" />
-    </div>
-  );
-}
-
-function PhoneIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-    </svg>
   );
 }

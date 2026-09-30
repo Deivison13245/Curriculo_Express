@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import Modal from './Modal';
-import { Upload, Link as LinkIcon, FileText, CheckCircle2, Sparkles } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, CheckCircle2, Sparkles, Palette, ExternalLink } from 'lucide-react';
 
 interface ImportModalProps {
   onClose: () => void;
   onImportData: (imported: { name?: string; jobTitle?: string; email?: string; summary?: string }) => void;
+  onOpenCanva?: () => void;
 }
 
-export default function ImportModal({ onClose, onImportData }: ImportModalProps) {
-  const [activeTab, setActiveTab] = useState<'file' | 'linkedin'>('file');
+export default function ImportModal({ onClose, onImportData, onOpenCanva }: ImportModalProps) {
+  const [activeTab, setActiveTab] = useState<'file' | 'linkedin' | 'canva'>('file');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -20,10 +21,10 @@ export default function ImportModal({ onClose, onImportData }: ImportModalProps)
       setSuccess(true);
       setTimeout(() => {
         onImportData({
-          name: 'Ana Paula Ferreira',
-          jobTitle: 'Engenheira de Software Sênior',
-          email: 'ana.paula@exemplo.com',
-          summary: 'Profissional com mais de 6 anos de experiência em desenvolvimento web, arquitetura de microsserviços e liderança de times ágeis.',
+          name: 'Maria Silva Santos',
+          jobTitle: 'Desenvolvedora Full Stack',
+          email: 'maria.silva@email.com',
+          summary: 'Profissional com sólida experiência em desenvolvimento web, arquitetura de sistemas e liderança de projetos ágeis.',
         });
         onClose();
       }, 1000);
@@ -31,7 +32,7 @@ export default function ImportModal({ onClose, onImportData }: ImportModalProps)
   }
 
   return (
-    <Modal title="✨ Importar Dados de Currículo" onClose={onClose}>
+    <Modal title="✨ Importação & Integrações" onClose={onClose}>
       <div className="space-y-5">
         {/* Subtabs */}
         <div className="flex border-b border-gray-200">
@@ -55,13 +56,27 @@ export default function ImportModal({ onClose, onImportData }: ImportModalProps)
             }`}
           >
             <LinkIcon className="w-4 h-4 text-[#F7941D]" />
-            <span>Link do LinkedIn</span>
+            <span>LinkedIn</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('canva')}
+            className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-2 transition-all ${
+              activeTab === 'canva'
+                ? 'border-[#7D2AE8] text-[#7D2AE8]'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <Palette className="w-4 h-4 text-[#7D2AE8]" />
+            <span>Canva</span>
           </button>
         </div>
 
-        {activeTab === 'file' ? (
+        {activeTab === 'file' && (
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-[#004A8D]/30 bg-[#004A8D]/5 rounded-2xl p-8 text-center hover:border-[#004A8D] transition-colors cursor-pointer group" onClick={handleImport}>
+            <div
+              className="border-2 border-dashed border-[#004A8D]/30 bg-[#004A8D]/5 rounded-2xl p-8 text-center hover:border-[#004A8D] transition-colors cursor-pointer group"
+              onClick={handleImport}
+            >
               <div className="w-12 h-12 rounded-2xl bg-[#004A8D] text-white mx-auto flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                 <FileText className="w-6 h-6 text-[#F7941D]" />
               </div>
@@ -69,7 +84,9 @@ export default function ImportModal({ onClose, onImportData }: ImportModalProps)
               <p className="text-[11px] text-gray-500 mt-1">Formatos suportados: PDF, DOCX, DOC (máx. 10MB)</p>
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'linkedin' && (
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -94,6 +111,33 @@ export default function ImportModal({ onClose, onImportData }: ImportModalProps)
           </div>
         )}
 
+        {activeTab === 'canva' && (
+          <div className="space-y-4">
+            <div className="p-4 bg-gradient-to-r from-[#7D2AE8]/10 to-[#00C4CC]/10 rounded-2xl border border-[#7D2AE8]/20 space-y-3">
+              <div className="flex items-center gap-2">
+                <Palette className="w-5 h-5 text-[#7D2AE8]" />
+                <strong className="text-xs text-gray-900">Integração & Modelos com o Canva</strong>
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Você pode utilizar os modelos visuais do Canva para criar portfólios visuais e importar suas informações geradas aqui com alto poder descritivo de IA.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenCanva) onOpenCanva();
+                  }}
+                  className="px-4 py-2 bg-[#7D2AE8] hover:bg-[#6820c7] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                >
+                  <span>Ver Guia do Canva</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading && (
           <div className="p-4 bg-[#004A8D]/10 rounded-xl text-center space-y-2">
             <div className="w-6 h-6 border-2 border-[#004A8D] border-t-transparent rounded-full animate-spin mx-auto" />
@@ -102,9 +146,9 @@ export default function ImportModal({ onClose, onImportData }: ImportModalProps)
         )}
 
         {success && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span>Dados importados com sucesso! Preenchendo o formulário...</span>
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Dados importados com sucesso!</span>
           </div>
         )}
       </div>

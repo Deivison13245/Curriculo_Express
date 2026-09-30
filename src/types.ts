@@ -36,6 +36,8 @@ export interface ProjectOrAchievement {
   description: string;
   link?: string;
   year?: string;
+  pdfFileName?: string;
+  pdfData?: string;
 }
 
 export interface CustomSectionItem {
@@ -51,6 +53,7 @@ export interface ResumeDesign {
   fontFamily: string;
   fontSize: 'sm' | 'md' | 'lg';
   spacing: 'compact' | 'normal' | 'spacious';
+  layoutMode?: 'compact' | 'full';
 }
 
 export interface EnabledSections {
@@ -58,6 +61,7 @@ export interface EnabledSections {
   experience: boolean;
   education: boolean;
   skills: boolean;
+  technologies: boolean;
   languages: boolean;
   certifications: boolean;
   projects: boolean;
@@ -72,6 +76,8 @@ export interface EnabledPersonalFields {
   github: boolean;
   portfolio: boolean;
   nationality: boolean;
+  photo: boolean;
+  videoUrl: boolean;
 }
 
 export interface ResumeData {
@@ -79,10 +85,12 @@ export interface ResumeData {
   jobTitle: string;
   email: string;
   phone: string;
-  city: string;
   state: string;
+  city: string;
 
   // Optional personal fields
+  photo?: string;
+  videoUrl?: string;
   birthDate?: string;
   maritalStatus?: string;
   driverLicense?: string;
@@ -96,6 +104,7 @@ export interface ResumeData {
   experience: Experience[];
   hardSkills: string[];
   softSkills: string[];
+  technologies: string[];
   languages: Language[];
   certifications: Certification[];
   projects: ProjectOrAchievement[];
@@ -108,7 +117,18 @@ export interface ResumeData {
 
 export type TabType = 'content' | 'design' | 'preview';
 
-export type ModalType = 'synthesis' | 'star' | 'review' | 'ats' | 'export' | 'import' | 'translate' | null;
+export type ModalType =
+  | 'synthesis'
+  | 'star'
+  | 'review'
+  | 'ats'
+  | 'export'
+  | 'import'
+  | 'translate'
+  | 'canva'
+  | 'videoExplainer'
+  | 'skillsExplainer'
+  | null;
 
 export interface Toast {
   id: string;
