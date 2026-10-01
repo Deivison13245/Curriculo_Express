@@ -317,6 +317,13 @@ export default function App() {
                 phone: imported.phone || d.phone,
                 city: imported.city || d.city,
                 state: imported.state || d.state,
+                birthDate: imported.birthDate || d.birthDate,
+                maritalStatus: imported.maritalStatus || d.maritalStatus,
+                driverLicense: imported.driverLicense || d.driverLicense,
+                nationality: imported.nationality || d.nationality,
+                linkedin: imported.linkedin || d.linkedin,
+                github: imported.github || d.github,
+                portfolio: imported.portfolio || d.portfolio,
                 summary: imported.summary || d.summary,
                 enabledPersonalFields: updatedEnabledFields,
                 hardSkills: (imported.hardSkills && imported.hardSkills.length > 0) ? imported.hardSkills : d.hardSkills,
@@ -324,6 +331,9 @@ export default function App() {
                 technologies: (imported.technologies && imported.technologies.length > 0) ? imported.technologies : d.technologies,
                 experience: (imported.experience && imported.experience.length > 0) ? imported.experience : d.experience,
                 education: (imported.education && imported.education.length > 0) ? imported.education : d.education,
+                projects: (imported.projects && imported.projects.length > 0) ? imported.projects : d.projects,
+                languages: (imported.languages && imported.languages.length > 0) ? imported.languages : d.languages,
+                certifications: (imported.certifications && imported.certifications.length > 0) ? imported.certifications : d.certifications,
               };
             });
             addToast('✓ Dados do currículo importados com sucesso!');

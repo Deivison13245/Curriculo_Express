@@ -201,10 +201,15 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de código adicionais,
   }
 }
 
+import { parseResumeStructured } from './resumeParser';
+
 /**
- * Parser inteligente de currículo em texto usando IA com fallback heurístico
+ * Parser inteligente de currículo em texto usando IA com fallback estruturado local de alta fidelidade
  */
 export async function parseResumeTextWithAI(rawText: string): Promise<any> {
+  // Extrai primeiro a estrutura determinística para garantir 100% de integridade dos campos
+  const baselineData = parseResumeStructured(rawText);
+
   const prompt = `Analise o texto abaixo, que corresponde a um currículo ou perfil profissional, e extraia estritamente os dados reais encontrados no texto em formato JSON.
 ATENÇÃO CRÍTICA:
 1. Extraia o nome real (NUNCA coloque tags como [xml#, nem nomes fictícios).
@@ -218,6 +223,8 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com esta estrutura:
   "phone": "Telefone",
   "city": "Cidade",
   "state": "Sigla do Estado (2 letras, ex: SP)",
+  "birthDate": "Data de nascimento se houver",
+  "maritalStatus": "Estado civil se houver",
   "linkedin": "url ou usuário do linkedin",
   "github": "url do github",
   "portfolio": "url do portfolio",
@@ -243,6 +250,20 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com esta estrutura:
       "year": "Ano de conclusão",
       "period": ""
     }
+  ],
+  "projects": [
+    {
+      "title": "Título do Projeto",
+      "year": "Ano",
+      "link": "URL",
+      "description": "Descrição"
+    }
+  ],
+  "languages": [
+    {
+      "name": "Idioma",
+      "level": "Nível"
+    }
   ]
 }
 
@@ -265,53 +286,36 @@ ${rawText}
       .trim();
 
     const parsed = JSON.parse(cleanedJson);
-    return parsed;
+
+    // Mescla dados de IA com baseline estruturado para garantir que nenhum campo fique vazio por engano
+    return {
+      ...baselineData,
+      ...parsed,
+      name: parsed.name || baselineData.name,
+      jobTitle: parsed.jobTitle || baselineData.jobTitle,
+      email: parsed.email || baselineData.email,
+      phone: parsed.phone || baselineData.phone,
+      city: parsed.city || baselineData.city,
+      state: parsed.state || baselineData.state,
+      summary: parsed.summary || baselineData.summary,
+      hardSkills: (parsed.hardSkills && parsed.hardSkills.length > 0) ? parsed.hardSkills : baselineData.hardSkills,
+      softSkills: (parsed.softSkills && parsed.softSkills.length > 0) ? parsed.softSkills : baselineData.softSkills,
+      technologies: (parsed.technologies && parsed.technologies.length > 0) ? parsed.technologies : baselineData.technologies,
+      education: (parsed.education && parsed.education.length > 0) ? parsed.education : baselineData.education,
+      experience: (parsed.experience && parsed.experience.length > 0) ? parsed.experience : baselineData.experience,
+      projects: (parsed.projects && parsed.projects.length > 0) ? parsed.projects : baselineData.projects,
+      languages: (parsed.languages && parsed.languages.length > 0) ? parsed.languages : baselineData.languages,
+    };
   } catch (e) {
-    console.warn('[AIService] Falha ao processar com IA, usando extração heurística local:', e);
-    return parseResumeHeuristic(rawText);
+    console.warn('[AIService] Falha ao processar com IA, usando extração estruturada local:', e);
+    return baselineData;
   }
 }
 
 /**
- * Extrator local de emergência usando expressões regulares
+ * Extrator local de emergência usando parser estruturado
  */
 export function parseResumeHeuristic(text: string): any {
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  
-  // Email
-  const emailMatch = text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/);
-  const email = emailMatch ? emailMatch[1] : '';
-
-  // Telefone
-  const phoneMatch = text.match(/(?:\(?\d{2}\)?\s*)?(?:9\s*)?\d{4}[-\s]?\d{4}/);
-  const phone = phoneMatch ? phoneMatch[0].trim() : '';
-
-  // Nome (geralmente a primeira linha de texto não vazia que não seja email nem telefone)
-  let name = '';
-  for (const line of lines) {
-    if (line.length > 2 && line.length < 50 && !line.includes('@') && !/\d{4}/.test(line)) {
-      name = line;
-      break;
-    }
-  }
-
-  // Cargo (segunda linha ou procura por palavras comuns)
-  let jobTitle = '';
-  if (lines.length > 1 && lines[1] !== name && !lines[1].includes('@') && lines[1].length < 60) {
-    jobTitle = lines[1];
-  }
-
-  return {
-    name,
-    jobTitle,
-    email,
-    phone,
-    summary: text.slice(0, 300),
-    hardSkills: [],
-    softSkills: [],
-    technologies: [],
-    experience: [],
-    education: []
-  };
+  return parseResumeStructured(text);
 }
 
