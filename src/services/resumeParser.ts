@@ -1,5 +1,6 @@
 import { BRAZIL_STATES } from '../data/brazilLocations';
-import type { ResumeData, Education, Experience, Language, ProjectOrAchievement } from '../types';
+import type { ResumeData, Education, Experience, Language, Certification, ProjectOrAchievement } from '../types';
+import { sanitizeImportedResumeData, cleanWatermarks } from '../utils/resumeSanitizer';
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 9);
@@ -10,6 +11,7 @@ function isIgnoredLine(line: string): boolean {
   const lower = line.toLowerCase().trim();
   if (!lower) return true;
   if (lower.includes('documento gerado e formatado pelo')) return true;
+  if (lower.includes('curriculo express') || lower.includes('currículo express')) return true;
   if (lower.includes('visualização compacta')) return true;
   if (lower.includes('visualização completa')) return true;
   if (/^\d{1,3}%\s*visualização/i.test(lower)) return true;
@@ -19,12 +21,13 @@ function isIgnoredLine(line: string): boolean {
 }
 
 export function parseResumeStructured(rawText: string): Partial<ResumeData> {
-  const cleanLines = rawText
+  const sanitizedRaw = cleanWatermarks(rawText);
+  const cleanLines = sanitizedRaw
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => !isIgnoredLine(l));
 
-  const result: Partial<ResumeData> = {
+  const rawResult: any = {
     name: '',
     jobTitle: '',
     email: '',
@@ -33,6 +36,7 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
     state: '',
     birthDate: '',
     maritalStatus: '',
+    driverLicense: '',
     linkedin: '',
     github: '',
     portfolio: '',
@@ -47,76 +51,81 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
     certifications: [],
   };
 
-  // 1. Extração de Contatos Globais (Email, Telefone, Links, Nascimento, Estado Civil)
   const fullText = cleanLines.join('\n');
 
+  // 1. Extração de Contatos Globais
   // E-mail
   const emailMatch = fullText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
   if (emailMatch) {
-    result.email = emailMatch[1].trim();
+    rawResult.email = emailMatch[1].trim();
   }
 
   // Telefone / WhatsApp
   const phoneMatch = fullText.match(/(?:\(?\d{2}\)?\s*)?(?:9\s*)?\d{4,5}[-\s]?\d{4}/);
   if (phoneMatch) {
-    result.phone = phoneMatch[0].trim();
+    rawResult.phone = phoneMatch[0].trim();
   }
 
-  // Data de Nascimento
+  // Data de Nascimento ou Idade
   const birthMatch = fullText.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
   if (birthMatch) {
-    result.birthDate = birthMatch[1];
+    rawResult.birthDate = birthMatch[1];
   } else {
     const ageMatch = fullText.match(/\b(\d{1,2}\s+anos)\b/i);
-    if (ageMatch) result.birthDate = ageMatch[1];
+    if (ageMatch) rawResult.birthDate = ageMatch[1];
   }
 
   // Estado Civil
   const maritalMatch = fullText.match(/\b(Solteiro\(a\)|Casado\(a\)|Divorciado\(a\)|Viúvo\(a\)|União Estável|Solteiro|Casada|Solteira|Casado)\b/i);
   if (maritalMatch) {
-    result.maritalStatus = maritalMatch[1];
+    rawResult.maritalStatus = maritalMatch[1];
+  }
+
+  // CNH
+  const cnhMatch = fullText.match(/\bCNH[:\s]*([A-E]+|AB|A|B)\b/i);
+  if (cnhMatch) {
+    rawResult.driverLicense = cnhMatch[1].toUpperCase();
   }
 
   // LinkedIn
   const linkedinMatch = fullText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9._-]+)/i);
   if (linkedinMatch) {
-    result.linkedin = `linkedin.com/in/${linkedinMatch[1]}`;
+    rawResult.linkedin = `linkedin.com/in/${linkedinMatch[1]}`;
   }
 
   // GitHub
   const githubMatch = fullText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9._-]+)/i);
   if (githubMatch) {
-    result.github = `github.com/${githubMatch[1]}`;
+    rawResult.github = `github.com/${githubMatch[1]}`;
   }
 
   // Portfólio / Link externo
   const portfolioMatch = fullText.match(/(?:https?:\/\/)(?:www\.)?([a-zA-Z0-9-]+\.(?:com|com\.br|dev|io|org|net|render\.com|vercel\.app|onrender\.com)[^\s•]*)/i);
   if (portfolioMatch && !portfolioMatch[0].includes('linkedin.com') && !portfolioMatch[0].includes('github.com')) {
-    result.portfolio = portfolioMatch[0].trim().replace(/^🔗/, '');
+    rawResult.portfolio = portfolioMatch[0].trim().replace(/^🔗/, '');
   }
 
   // Localização (Estado e Cidade)
   for (const s of BRAZIL_STATES) {
-    // Ex: "Santo Antonio de Jesus - BA" ou "Santo Antonio de Jesus / BA" ou "BA - Salvador"
     const stateRegex = new RegExp(`([^•\n,–/]+)[–\\-/]\\s*(${s.sigla})\\b`, 'i');
     const locMatch = fullText.match(stateRegex);
     if (locMatch) {
-      result.state = s.sigla;
-      result.city = locMatch[1].trim().replace(/^.*?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç\s]+)$/, '$1').trim();
+      rawResult.state = s.sigla;
+      rawResult.city = locMatch[1].trim().replace(/^.*?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç\s]+)$/, '$1').trim();
       break;
     }
   }
 
   // 2. Identificação de Seções
   const SECTION_PATTERNS = [
-    { key: 'summary', regex: /^(?:SÍNTESE(?: DE QUALIFICAÇÕES)?|RESUMO(?: PROFISSIONAL)?|PERFIL(?: PROFISSIONAL)?|OBJETIVO(?: PROFISSIONAL)?)/i },
+    { key: 'summary', regex: /^(?:SÍNTESE(?: DE QUALIFICAÇÕES)?|RESUMO(?: PROFISSIONAL)?|PERFIL(?: PROFISSIONAL)?|OBJETIVO(?: PROFISSIONAL)?|SOBRE MIM)/i },
     { key: 'education', regex: /^(?:FORMAÇÃO(?: ACADÊMICA)?|EDUCAÇÃO|ESCOLARIDADE|CURSOS ACADÊMICOS)/i },
     { key: 'technologies', regex: /^(?:TECNOLOGIAS DOMINADAS(?: & FERRAMENTAS)?|TECNOLOGIAS|FERRAMENTAS|CONHECIMENTOS TÉCNICOS)/i },
     { key: 'skills', regex: /^(?:PRINCIPAIS COMPETÊNCIAS|COMPETÊNCIAS|HABILIDADES)/i },
     { key: 'experience', regex: /^(?:EXPERIÊNCIA(?:S)?(?: PROFISSIONAL(?:IS)?)?|HISTÓRICO PROFISSIONAL|EXPERIÊNCIA DE TRABALHO)/i },
     { key: 'projects', regex: /^(?:PROJETOS(?: & PORTFÓLIO)?|PORTFÓLIO|PROJETOS REALIZADOS|PRINCIPAIS PROJETOS)/i },
     { key: 'languages', regex: /^(?:IDIOMAS?|LÍNGUAS)/i },
-    { key: 'certifications', regex: /^(?:CERTIFICAÇÕES(?: E CURSOS)?|CURSOS COMPLEMENTARES)/i },
+    { key: 'certifications', regex: /^(?:CERTIFICAÇÕES(?: E CURSOS)?|CURSOS COMPLEMENTARES|CURSOS LIVRES)/i },
   ];
 
   interface SectionChunk {
@@ -151,22 +160,21 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
   const headerSection = sections.find((s) => s.key === 'header');
   if (headerSection && headerSection.lines.length > 0) {
     const validHeaderLines = headerSection.lines.filter((l) => {
-      // Ignora linhas que são puramente contatos ou links
       if (l.includes('@')) return false;
       if (/\(\d{2}\)/.test(l)) return false;
       if (/linkedin\.com/i.test(l)) return false;
       if (/github\.com/i.test(l)) return false;
       if (/^\s*•/.test(l)) return false;
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(l)) return false;
+      if (/documento gerado|curriculo express/i.test(l)) return false;
       return true;
     });
 
     if (validHeaderLines.length > 0) {
-      // Primeira linha válida é o Nome Completo
-      result.name = validHeaderLines[0].replace(/•.*$/, '').trim();
+      rawResult.name = validHeaderLines[0].replace(/•.*$/, '').trim();
     }
     if (validHeaderLines.length > 1) {
-      // Segunda linha válida é o Cargo Pretendido
-      result.jobTitle = validHeaderLines[1].replace(/•.*$/, '').trim();
+      rawResult.jobTitle = validHeaderLines[1].replace(/•.*$/, '').trim();
     }
   }
 
@@ -176,43 +184,38 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
     if (!textBlock) continue;
 
     if (sec.key === 'summary') {
-      result.summary = sec.lines.join('\n').trim();
+      rawResult.summary = sec.lines.join('\n').trim();
     }
 
     if (sec.key === 'technologies') {
-      // Divide por bullets, vírgulas, quebras de linha ou múltiplos espaços
       const rawItems = sec.lines
         .flatMap((l) => l.split(/[•,;|\n]/))
         .map((t) => t.trim())
         .filter((t) => t.length > 1 && !isIgnoredLine(t));
 
-      // Se veio tudo em uma linha separada por espaços entre palavras compostas
       const techList: string[] = [];
       for (const item of rawItems) {
-        if (item.length > 50) {
-          // Separação de tags unidas
+        if (item.length > 40) {
           const tokens = item.split(/\s{2,}|\t/).map((x) => x.trim()).filter(Boolean);
           techList.push(...tokens);
         } else {
           techList.push(item);
         }
       }
-      result.technologies = Array.from(new Set(techList));
+      rawResult.technologies = Array.from(new Set(techList));
     }
 
     if (sec.key === 'skills') {
-      // Extrai Hard Skills e Soft Skills explicitamente
       for (const l of sec.lines) {
         if (/^Hard Skills\s*:/i.test(l)) {
           const list = l.replace(/^Hard Skills\s*:/i, '').split(/[•,;]/).map((s) => s.trim()).filter(Boolean);
-          result.hardSkills = Array.from(new Set([...(result.hardSkills || []), ...list]));
+          rawResult.hardSkills = Array.from(new Set([...(rawResult.hardSkills || []), ...list]));
         } else if (/^Soft Skills\s*:/i.test(l)) {
           const list = l.replace(/^Soft Skills\s*:/i, '').split(/[•,;]/).map((s) => s.trim()).filter(Boolean);
-          result.softSkills = Array.from(new Set([...(result.softSkills || []), ...list]));
+          rawResult.softSkills = Array.from(new Set([...(rawResult.softSkills || []), ...list]));
         } else {
-          // Linha geral de competências
           const generalList = l.split(/[•,;]/).map((s) => s.trim()).filter(Boolean);
-          result.hardSkills = Array.from(new Set([...(result.hardSkills || []), ...generalList]));
+          rawResult.hardSkills = Array.from(new Set([...(rawResult.hardSkills || []), ...generalList]));
         }
       }
     }
@@ -221,7 +224,6 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
       const eduList: Education[] = [];
       for (const l of sec.lines) {
         if (!l.trim()) continue;
-        // Padrão: "Curso / Grau — Instituição (Período) Ano" ou "Instituição - Curso - Ano"
         const yearMatch = l.match(/\b(19\d{2}|20\d{2})\b/);
         const year = yearMatch ? yearMatch[1] : '';
         const periodMatch = l.match(/\((Matutino|Vespertino|Noturno|Integral|EAD)\)/i);
@@ -249,7 +251,7 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
           period,
         });
       }
-      if (eduList.length > 0) result.education = eduList;
+      if (eduList.length > 0) rawResult.education = eduList;
     }
 
     if (sec.key === 'experience') {
@@ -283,7 +285,7 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
           description: descLines.join(' ').trim(),
         });
       }
-      if (expList.length > 0) result.experience = expList;
+      if (expList.length > 0) rawResult.experience = expList;
     }
 
     if (sec.key === 'projects') {
@@ -321,7 +323,7 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
       if (currentProj && currentProj.title) {
         projList.push(currentProj as ProjectOrAchievement);
       }
-      if (projList.length > 0) result.projects = projList;
+      if (projList.length > 0) rawResult.projects = projList;
     }
 
     if (sec.key === 'languages') {
@@ -338,9 +340,29 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
           });
         }
       }
-      if (langList.length > 0) result.languages = langList;
+      if (langList.length > 0) rawResult.languages = langList;
+    }
+
+    if (sec.key === 'certifications') {
+      const certList: Certification[] = [];
+      for (const l of sec.lines) {
+        if (!l.trim()) continue;
+        const yearM = l.match(/\b(19\d{2}|20\d{2})\b/);
+        const year = yearM ? yearM[1] : '';
+        const clean = l.replace(/\b(19\d{2}|20\d{2})\b/g, '').trim();
+        const parts = clean.split(/[—–-]/).map((p) => p.trim()).filter(Boolean);
+
+        certList.push({
+          id: uid(),
+          name: parts[0] || l,
+          issuer: parts[1] || '',
+          year
+        });
+      }
+      if (certList.length > 0) rawResult.certifications = certList;
     }
   }
 
-  return result;
+  // Sanitização final rigorosa
+  return sanitizeImportedResumeData(rawResult, sanitizedRaw);
 }

@@ -3,6 +3,9 @@
  * Integrado com a chave padrão do sistema e suporte à API do Google Gemini
  */
 
+import { parseResumeStructured } from './resumeParser';
+import { sanitizeImportedResumeData } from '../utils/resumeSanitizer';
+
 // Decoded fallback or Vite ENV key
 const FALLBACK_KEY_B64 = 'QVEuQWI4Uk42S290czUxWlBYM0pjWkNOSWluR1RKRTY2bGl1N09aZkVCaHBqVXYzMHhJeEVn';
 
@@ -35,9 +38,13 @@ export function hasCustomApiKey(): boolean {
 }
 
 /**
- * Chamada à API Gemini com fallback inteligente
+ * Chamada à API Gemini com controle de temperatura e fallback
  */
-export async function callGemini(prompt: string, systemInstruction?: string): Promise<string> {
+export async function callGemini(
+  prompt: string,
+  systemInstruction?: string,
+  temperature: number = 0.7
+): Promise<string> {
   const key = getApiKey();
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
 
@@ -49,8 +56,8 @@ export async function callGemini(prompt: string, systemInstruction?: string): Pr
       }
     ],
     generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 1000,
+      temperature: temperature,
+      maxOutputTokens: 2048,
     }
   };
 
@@ -95,7 +102,7 @@ export async function parseResumeFileWithAI(base64Data: string, mimeType: string
   const prompt = `Você é um extrator de alta precisão especializado em ler e analisar arquivos de currículos (PDF, imagens e documentos) para o sistema Curriculo Express.
 
 INSTRUÇÕES E REGRAS ABSOLUTAS:
-1. Extraia o nome real do candidato presente no documento. NÃO extraia tags de sistema, lixo de codificação (como [xml#, tags HTML, etc.) nem nomes de exemplo.
+1. Extraia o nome real do candidato presente no documento. NUNCA extraia tags de sistema, lixo de codificação (como [xml#, tags HTML, etc.) nem títulos como "Documento gerado pelo Curriculo Express".
 2. Identifique com precisão:
    - Nome Completo
    - Cargo Pretendido / Objetivo Profissional (ou último cargo relevante)
@@ -118,6 +125,9 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de código adicionais,
   "phone": "telefone",
   "city": "cidade",
   "state": "UF",
+  "birthDate": "data ou idade",
+  "maritalStatus": "estado civil",
+  "driverLicense": "CNH",
   "linkedin": "url do linkedin",
   "github": "url do github",
   "portfolio": "url do portfolio/site",
@@ -142,6 +152,20 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de código adicionais,
       "institution": "Instituição",
       "year": "Ano",
       "period": ""
+    }
+  ],
+  "languages": [
+    {
+      "name": "Idioma",
+      "level": "Nível"
+    }
+  ],
+  "projects": [
+    {
+      "title": "Título do Projeto",
+      "year": "Ano",
+      "link": "URL",
+      "description": "Descrição"
     }
   ]
 }`;
@@ -194,26 +218,26 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de código adicionais,
       .replace(/\s*```$/i, '')
       .trim();
 
-    return JSON.parse(cleanedJson);
+    const parsed = JSON.parse(cleanedJson);
+    return sanitizeImportedResumeData(parsed);
   } catch (err) {
     console.error('[AIService] Falha ao processar arquivo multimodal:', err);
     throw err;
   }
 }
 
-import { parseResumeStructured } from './resumeParser';
-
 /**
  * Parser inteligente de currículo em texto usando IA com fallback estruturado local de alta fidelidade
  */
 export async function parseResumeTextWithAI(rawText: string): Promise<any> {
-  // Extrai primeiro a estrutura determinística para garantir 100% de integridade dos campos
+  // Extrai primeiro a estrutura determinística local
   const baselineData = parseResumeStructured(rawText);
 
   const prompt = `Analise o texto abaixo, que corresponde a um currículo ou perfil profissional, e extraia estritamente os dados reais encontrados no texto em formato JSON.
 ATENÇÃO CRÍTICA:
-1. Extraia o nome real (NUNCA coloque tags como [xml#, nem nomes fictícios).
-2. Não invente dados que não existam no texto. Se um campo não for identificado, retorne string vazia ou array vazio.
+1. Extraia o nome real do candidato. NUNCA coloque tags de sistema, cabeçalhos ou nomes fictícios.
+2. Mantenha os dados separados em seus respectivos campos. NUNCA junte nome, telefone ou objetivo dentro do resumo.
+3. Não invente dados que não existam no texto. Se um campo não for identificado, retorne string vazia ou array vazio.
 
 Retorne EXCLUSIVAMENTE um objeto JSON válido com esta estrutura:
 {
@@ -225,6 +249,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com esta estrutura:
   "state": "Sigla do Estado (2 letras, ex: SP)",
   "birthDate": "Data de nascimento se houver",
   "maritalStatus": "Estado civil se houver",
+  "driverLicense": "CNH se houver",
   "linkedin": "url ou usuário do linkedin",
   "github": "url do github",
   "portfolio": "url do portfolio",
@@ -264,6 +289,13 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido com esta estrutura:
       "name": "Idioma",
       "level": "Nível"
     }
+  ],
+  "certifications": [
+    {
+      "name": "Nome do Curso / Certificado",
+      "issuer": "Instituição Emissora",
+      "year": "Ano"
+    }
   ]
 }
 
@@ -275,10 +307,10 @@ ${rawText}
   try {
     const aiResponse = await callGemini(
       prompt,
-      'Você é um parser especializado em extração de currículos e perfis profissionais para o sistema Curriculo Express. Responda apenas com o JSON estruturado.'
+      'Você é um parser especializado em extração de currículos e perfis profissionais para o sistema Curriculo Express. Responda apenas com o JSON estruturado.',
+      0.1
     );
 
-    // Limpa possíveis blocos ```json ... ```
     const cleanedJson = aiResponse
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
@@ -287,8 +319,8 @@ ${rawText}
 
     const parsed = JSON.parse(cleanedJson);
 
-    // Mescla dados de IA com baseline estruturado para garantir que nenhum campo fique vazio por engano
-    return {
+    // Mescla dados de IA com baseline estruturado
+    const merged = {
       ...baselineData,
       ...parsed,
       name: parsed.name || baselineData.name,
@@ -305,10 +337,13 @@ ${rawText}
       experience: (parsed.experience && parsed.experience.length > 0) ? parsed.experience : baselineData.experience,
       projects: (parsed.projects && parsed.projects.length > 0) ? parsed.projects : baselineData.projects,
       languages: (parsed.languages && parsed.languages.length > 0) ? parsed.languages : baselineData.languages,
+      certifications: (parsed.certifications && parsed.certifications.length > 0) ? parsed.certifications : baselineData.certifications,
     };
+
+    return sanitizeImportedResumeData(merged, rawText);
   } catch (e) {
     console.warn('[AIService] Falha ao processar com IA, usando extração estruturada local:', e);
-    return baselineData;
+    return sanitizeImportedResumeData(baselineData, rawText);
   }
 }
 
@@ -316,6 +351,5 @@ ${rawText}
  * Extrator local de emergência usando parser estruturado
  */
 export function parseResumeHeuristic(text: string): any {
-  return parseResumeStructured(text);
+  return sanitizeImportedResumeData(parseResumeStructured(text), text);
 }
-

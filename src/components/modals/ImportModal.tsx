@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import Modal from './Modal';
 import { Upload, FileText, CheckCircle2, Sparkles, Palette, ExternalLink, ClipboardPaste, AlertCircle } from 'lucide-react';
 import { parseResumeTextWithAI, parseResumeFileWithAI } from '../../services/aiService';
-import { extractTextFromPdf } from '../../services/pdfService';
+import { extractTextFromPdf, renderPdfPageToBase64 } from '../../services/pdfService';
+import { sanitizeImportedResumeData } from '../../utils/resumeSanitizer';
 import type { ResumeData } from '../../types';
 
 interface ImportModalProps {
@@ -20,31 +21,29 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function applyExtractedData(extracted: any) {
-    if (!extracted || (!extracted.name && !extracted.jobTitle && !extracted.email && !extracted.summary && !extracted.phone)) {
-      throw new Error('Não foi possível identificar dados estruturados neste arquivo.');
-    }
+  async function applyExtractedData(extracted: any, rawFallback: string = '') {
+    const sanitized = sanitizeImportedResumeData(extracted, rawFallback);
 
     setLoading(false);
     setSuccess(true);
     setTimeout(() => {
-      onImportData(extracted);
+      onImportData(sanitized);
       onClose();
-    }, 800);
+    }, 700);
   }
 
   async function processText(text: string) {
-    if (!text.trim()) {
+    if (!text || !text.trim()) {
       setError('Por favor, insira ou envie o conteúdo do seu currículo.');
       return;
     }
     setError(null);
     setLoading(true);
-    setStatusMessage('Analisando e estruturando dados com IA...');
+    setStatusMessage('Analisando estrutura e organizando seções com IA...');
 
     try {
       const extracted = await parseResumeTextWithAI(text);
-      await applyExtractedData(extracted);
+      await applyExtractedData(extracted, text);
     } catch (err: any) {
       setLoading(false);
       setError(err?.message || 'Erro ao processar o currículo. Verifique o texto e tente novamente.');
@@ -65,10 +64,10 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
           const json = JSON.parse(event.target?.result as string);
           setSuccess(true);
           setTimeout(() => {
-            onImportData(json);
+            onImportData(sanitizeImportedResumeData(json));
             onClose();
-          }, 800);
-        } catch (err) {
+          }, 700);
+        } catch {
           setError('Arquivo JSON de backup inválido.');
         }
       };
@@ -90,33 +89,35 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
     // 3. Se for PDF
     if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
       setLoading(true);
-      setStatusMessage(`Lendo e processando "${file.name}"...`);
+      setStatusMessage(`Lendo e analisando colunas de "${file.name}"...`);
 
       const reader = new FileReader();
       reader.onload = async (event) => {
+        const arrayBuffer = event.target?.result as ArrayBuffer;
         try {
-          const arrayBuffer = event.target?.result as ArrayBuffer;
+          // Fase 1: Extrator espacial por coordenadas X/Y
           const extractedPdfText = await extractTextFromPdf(arrayBuffer);
 
-          if (extractedPdfText && extractedPdfText.trim().length > 20) {
+          if (extractedPdfText && extractedPdfText.trim().length > 25) {
+            setStatusMessage('Mapeando dados e estruturando currículo com IA...');
             await processText(extractedPdfText);
             return;
           }
+        } catch (spatialErr) {
+          console.warn('[ImportModal] Falha na extração de texto, tentando fallback em imagem/canvas:', spatialErr);
+        }
 
-          // Se o PDF não tiver camada de texto (PDF escaneado), usa IA multimodal direta
-          const dataUrl = await new Promise<string>((resolve) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result as string);
-            r.readAsDataURL(file);
-          });
-          const base64Data = dataUrl.split(',')[1];
-          const extracted = await parseResumeFileWithAI(base64Data, 'application/pdf');
+        // Fallback: Se o PDF for digitalizado/imagem ou não tiver camada de texto, renderiza página via Canvas
+        try {
+          setStatusMessage('Detectado PDF digitalizado: Processando imagem visual com IA...');
+          const imageBase64 = await renderPdfPageToBase64(arrayBuffer, 1);
+          const extracted = await parseResumeFileWithAI(imageBase64, 'image/jpeg');
           await applyExtractedData(extracted);
-        } catch (err: any) {
-          console.warn('[ImportModal] Falha na extração de PDF:', err);
+        } catch (imgErr: any) {
+          console.warn('[ImportModal] Falha no fallback visual:', imgErr);
           setLoading(false);
           setError(
-            'Não foi possível extrair o texto automaticamente deste PDF. Por favor, tente copiar e colar o texto do seu currículo na aba "Colar Texto / LinkedIn" ao lado.'
+            'Não foi possível extrair o texto automaticamente deste PDF. Por favor, copie e cole o texto do seu currículo na aba "Colar Texto / LinkedIn" ao lado.'
           );
         }
       };
@@ -146,8 +147,35 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
       return;
     }
 
-    // Para outros tipos
-    setError('Formato não suportado diretamente. Use PDF, TXT, JSON ou cole o texto na aba ao lado.');
+    // 5. Se for Word (.docx / .doc)
+    if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+      setLoading(true);
+      setStatusMessage(`Lendo documento Word "${file.name}"...`);
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const mammothLib = (window as any).mammoth;
+          if (mammothLib) {
+            const result = await mammothLib.extractRawText({ arrayBuffer });
+            if (result.value) {
+              await processText(result.value);
+              return;
+            }
+          }
+          throw new Error('Leitor de Word indisponível no navegador.');
+        } catch (docErr: any) {
+          console.warn('[ImportModal] Falha ao ler Word:', docErr);
+          setLoading(false);
+          setError('Não foi possível converter o arquivo Word diretamente. Por favor, cole o texto na aba "Colar Texto / LinkedIn".');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    setError('Formato não suportado diretamente. Use PDF, Word (.docx), TXT, JSON ou cole o texto na aba ao lado.');
   }
 
   return (
@@ -198,7 +226,7 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
             <input
               type="file"
               ref={fileInputRef}
-              accept=".json,.txt,.pdf,.docx,.doc"
+              accept=".json,.txt,.pdf,.docx,.doc,.png,.jpg,.jpeg"
               onChange={handleFileUpload}
               className="hidden"
               id="resumeFileInput"
@@ -211,7 +239,7 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
                 <FileText className="w-6 h-6 text-[#F7941D]" />
               </div>
               <p className="text-xs font-bold text-gray-900">Clique para selecionar seu arquivo ou arraste aqui</p>
-              <p className="text-[11px] text-gray-500 mt-1">Formatos suportados: JSON (Backup), TXT, PDF, DOCX (máx. 10MB)</p>
+              <p className="text-[11px] text-gray-500 mt-1">Formatos suportados: PDF, DOCX, TXT, Imagens ou JSON Backup (máx. 10MB)</p>
             </label>
           </div>
         )}
@@ -293,4 +321,3 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
     </Modal>
   );
 }
-
