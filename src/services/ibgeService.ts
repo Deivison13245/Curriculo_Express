@@ -67,21 +67,35 @@ export async function getMunicipiosByUF(uf: string): Promise<string[]> {
 }
 
 /**
- * Encontra o nome oficial da cidade do IBGE mais próximo do texto extraído do PDF
+ * Encontra o nome oficial da cidade do IBGE mais próximo do texto extraído do PDF com precisão estrita
  */
 export function findMatchingCity(rawCity: string, cityList: string[]): string {
   if (!rawCity || !cityList || cityList.length === 0) return rawCity || '';
   const cleanRaw = normalizeText(rawCity);
+  if (!cleanRaw) return rawCity;
 
-  // 1. Busca exata insensível a acento
+  // 1. Busca exata insensível a acento e maiúsculas/minúsculas
   const exactMatch = cityList.find((c) => normalizeText(c) === cleanRaw);
   if (exactMatch) return exactMatch;
 
-  // 2. Busca por substring ou inclusão (ex: "Santo Antonio" dentro de "Santo Antônio de Jesus")
-  const partialMatch = cityList.find(
-    (c) => normalizeText(c).includes(cleanRaw) || (cleanRaw.length > 4 && cleanRaw.includes(normalizeText(c)))
-  );
-  if (partialMatch) return partialMatch;
+  // 2. Busca exata por prefixo completo ou extensão completa (apenas para strings significativas)
+  if (cleanRaw.length >= 6) {
+    const prefixMatch = cityList.find((c) => {
+      const normC = normalizeText(c);
+      return normC.startsWith(cleanRaw) || cleanRaw.startsWith(normC);
+    });
+    if (prefixMatch) return prefixMatch;
+  }
+
+  // 3. Busca por correspondência de todas as palavras substantivas (ex: "santo antonio" em "Santo Antônio de Jesus")
+  const rawWords = cleanRaw.split(/\s+/).filter((w) => w.length > 2 && !/^(de|da|do|dos|das|em|no|na)$/.test(w));
+  if (rawWords.length >= 2) {
+    const wordMatch = cityList.find((c) => {
+      const normC = normalizeText(c);
+      return rawWords.every((w) => normC.includes(w));
+    });
+    if (wordMatch) return wordMatch;
+  }
 
   return rawCity;
 }

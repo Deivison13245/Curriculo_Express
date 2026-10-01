@@ -107,12 +107,18 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
 
   // Localização (Estado e Cidade)
   for (const s of BRAZIL_STATES) {
-    const stateRegex = new RegExp(`([^•\n,–/]+)[–\\-/]\\s*(${s.sigla})\\b`, 'i');
+    const stateRegex = new RegExp(`(?:^|[•\n,;|])\\s*([^•\n,;|–/]+?)\\s*[–\\-/]\\s*(${s.sigla})\\b`, 'i');
     const locMatch = fullText.match(stateRegex);
     if (locMatch) {
       rawResult.state = s.sigla;
-      rawResult.city = locMatch[1].trim().replace(/^.*?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç\s]+)$/, '$1').trim();
-      break;
+      const candidateCity = locMatch[1]
+        .replace(/^[•\s\-,|/]+/, '')
+        .replace(/^(?:Cidade|Munic[íi]pio|City|Endere[çc]o|Resid[êe]ncia)[:\s-]*/i, '')
+        .trim();
+      if (candidateCity && candidateCity.length >= 2 && !/s[íi]ntese|objetivo|educa|experi|nome|email|telefone|idade|anos/i.test(candidateCity)) {
+        rawResult.city = candidateCity;
+        break;
+      }
     }
   }
 
