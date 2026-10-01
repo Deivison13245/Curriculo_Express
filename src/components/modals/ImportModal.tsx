@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import Modal from './Modal';
 import { Upload, FileText, CheckCircle2, Sparkles, Palette, ExternalLink, ClipboardPaste, AlertCircle } from 'lucide-react';
 import { parseResumeTextWithAI, parseResumeFileWithAI } from '../../services/aiService';
+import { extractTextFromPdf } from '../../services/pdfService';
 import type { ResumeData } from '../../types';
 
 interface ImportModalProps {
@@ -29,7 +30,7 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
     setTimeout(() => {
       onImportData(extracted);
       onClose();
-    }, 900);
+    }, 800);
   }
 
   async function processText(text: string) {
@@ -39,7 +40,7 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
     }
     setError(null);
     setLoading(true);
-    setStatusMessage('Analisando e extraindo dados reais com IA...');
+    setStatusMessage('Analisando e estruturando dados com IA...');
 
     try {
       const extracted = await parseResumeTextWithAI(text);
@@ -86,34 +87,67 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
       return;
     }
 
-    // 3. Se for PDF ou Imagem (Processamento Multimodal Direto de Alta Fidelidade)
-    setLoading(true);
-    setStatusMessage(`Lendo e analisando "${file.name}" com IA visual...`);
+    // 3. Se for PDF
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      setLoading(true);
+      setStatusMessage(`Lendo e processando "${file.name}"...`);
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const dataUrl = event.target?.result as string;
-        const base64Data = dataUrl.split(',')[1];
-        const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png');
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const extractedPdfText = await extractTextFromPdf(arrayBuffer);
 
-        const extracted = await parseResumeFileWithAI(base64Data, mimeType);
-        await applyExtractedData(extracted);
-      } catch (err: any) {
-        console.warn('[ImportModal] Falha na leitura multimodal:', err);
-        setLoading(false);
-        setError(
-          'Não foi possível extrair o texto diretamente do PDF estruturado. Por favor, tente copiar e colar o texto na aba "Colar Texto / LinkedIn" ao lado para garantia total.'
-        );
-      }
-    };
+          if (extractedPdfText && extractedPdfText.trim().length > 20) {
+            await processText(extractedPdfText);
+            return;
+          }
 
-    reader.onerror = () => {
-      setLoading(false);
-      setError('Erro ao ler o arquivo selecionado.');
-    };
+          // Se o PDF não tiver camada de texto (PDF escaneado), usa IA multimodal direta
+          const dataUrl = await new Promise<string>((resolve) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result as string);
+            r.readAsDataURL(file);
+          });
+          const base64Data = dataUrl.split(',')[1];
+          const extracted = await parseResumeFileWithAI(base64Data, 'application/pdf');
+          await applyExtractedData(extracted);
+        } catch (err: any) {
+          console.warn('[ImportModal] Falha na extração de PDF:', err);
+          setLoading(false);
+          setError(
+            'Não foi possível extrair o texto automaticamente deste PDF. Por favor, tente copiar e colar o texto do seu currículo na aba "Colar Texto / LinkedIn" ao lado.'
+          );
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
 
-    reader.readAsDataURL(file);
+    // 4. Se for imagem (PNG, JPG, WEBP)
+    if (file.type.startsWith('image/')) {
+      setLoading(true);
+      setStatusMessage(`Analisando imagem "${file.name}" com IA visual...`);
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const dataUrl = event.target?.result as string;
+          const base64Data = dataUrl.split(',')[1];
+          const extracted = await parseResumeFileWithAI(base64Data, file.type || 'image/png');
+          await applyExtractedData(extracted);
+        } catch (err: any) {
+          console.warn('[ImportModal] Falha na imagem:', err);
+          setLoading(false);
+          setError('Não foi possível ler a imagem do currículo.');
+        }
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Para outros tipos
+    setError('Formato não suportado diretamente. Use PDF, TXT, JSON ou cole o texto na aba ao lado.');
   }
 
   return (

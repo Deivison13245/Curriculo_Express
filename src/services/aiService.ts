@@ -152,8 +152,8 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos de código adicionais,
         role: 'user',
         parts: [
           {
-            inline_data: {
-              mime_type: mimeType,
+            inlineData: {
+              mimeType: mimeType,
               data: base64Data
             }
           },

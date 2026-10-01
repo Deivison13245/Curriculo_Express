@@ -70,7 +70,7 @@ export default function PreviewPanel({
   return (
     <div className="flex flex-col items-center space-y-4 pb-24 max-w-5xl mx-auto">
       {/* Zoom & Quick Actions Toolbar */}
-      <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-xs p-3 flex flex-wrap items-center justify-between gap-3 sticky top-20 z-20">
+      <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-xs p-3 flex flex-wrap items-center justify-between gap-3 sticky top-20 z-20 no-print print:hidden">
         {/* Zoom controls */}
         <div className="flex items-center gap-2">
           <button
@@ -441,11 +441,6 @@ export default function PreviewPanel({
                 </p>
               </div>
             )}
-          </div>
-
-          {/* Rodapé discreto padrão */}
-          <div className="pt-4 mt-6 border-t border-gray-100 text-[9px] text-gray-400 text-center">
-            Documento gerado e formatado pelo Currículo Express Senac
           </div>
         </div>
       </div>
