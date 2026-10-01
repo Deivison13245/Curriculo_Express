@@ -1,6 +1,6 @@
 import { BRAZIL_STATES } from '../data/brazilLocations';
 import type { ResumeData, Education, Experience, Language, Certification, ProjectOrAchievement } from '../types';
-import { sanitizeImportedResumeData, cleanWatermarks } from '../utils/resumeSanitizer';
+import { sanitizeImportedResumeData, cleanWatermarks, extractValidBrazilianPhone } from '../utils/resumeSanitizer';
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 9);
@@ -60,10 +60,10 @@ export function parseResumeStructured(rawText: string): Partial<ResumeData> {
     rawResult.email = emailMatch[1].trim();
   }
 
-  // Telefone / WhatsApp
-  const phoneMatch = fullText.match(/(?:\(?\d{2}\)?\s*)?(?:9\s*)?\d{4,5}[-\s]?\d{4}/);
-  if (phoneMatch) {
-    rawResult.phone = phoneMatch[0].trim();
+  // Telefone / WhatsApp com prioridade para regex estrito brasileiro (evita pegar anos como 2026)
+  const phoneExtracted = extractValidBrazilianPhone(fullText);
+  if (phoneExtracted) {
+    rawResult.phone = phoneExtracted;
   }
 
   // Data de Nascimento ou Idade

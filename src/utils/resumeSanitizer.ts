@@ -1,5 +1,6 @@
 import { BRAZIL_STATES } from '../data/brazilLocations';
-import type { ResumeData, Education, Experience, Language, Certification, ProjectOrAchievement, CustomSectionItem } from '../types';
+import type { ResumeData, Education, Experience, Language, Certification, ProjectOrAchievement } from '../types';
+import { normalizeText, findMatchingCity } from '../services/ibgeService';
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 9);
@@ -34,7 +35,6 @@ export function normalizeState(stateInput: any): string {
   const lower = stateInput.trim().toLowerCase();
   if (STATE_NAME_TO_UF[lower]) return STATE_NAME_TO_UF[lower];
 
-  // Procura por substring de UF ou Estado
   for (const [name, uf] of Object.entries(STATE_NAME_TO_UF)) {
     if (lower.includes(name)) return uf;
   }
@@ -51,17 +51,52 @@ export function normalizeCity(cityInput: any): string {
   if (!cityInput || typeof cityInput !== 'string') return '';
   let city = cityInput.trim();
 
-  // Remove lixo comum, siglas no final (ex: "Serrinha - BA" -> "Serrinha")
+  // Remove siglas no final (ex: "Serrinha - BA" -> "Serrinha")
   city = city.replace(/[-–/]\s*[A-Z]{2}$/i, '').trim();
   city = city.replace(/^(?:Cidade|Município|City):\s*/i, '').trim();
 
   // Se contiver palavras que não são cidades (ex: seções de currículo)
-  if (/s[íi]ntese|objetivo|educa|experi|curr[íi]culo|nome|idade|telefone|email/i.test(city)) {
+  if (/s[íi]ntese|objetivo|educa|experi|curr[íi]culo|nome|idade|telefone|email|outra cidade/i.test(city)) {
     return '';
   }
 
-  // Capitalização limpa
   return city;
+}
+
+/**
+ * Extrai e formata números de telefone brasileiros legítimos, rejeitando anos como 20262026
+ */
+export function extractValidBrazilianPhone(text: string): string {
+  if (!text || typeof text !== 'string') return '';
+
+  // 1. Padrão com DDD explícito e hífen/espaço: (75) 98123-8602 ou (75) 98123 8602
+  const dddWithParens = text.match(/\(([1-9]{2})\)\s*(9?\s*\d{4})[-\s.]*(\d{4})/);
+  if (dddWithParens) {
+    const ddd = dddWithParens[1];
+    const prefix = dddWithParens[2].replace(/\s+/g, '');
+    const suffix = dddWithParens[3];
+    return `(${ddd}) ${prefix}-${suffix}`;
+  }
+
+  // 2. Padrão com código de país: +55 (75) 98123-8602 ou +55 75 981238602
+  const international = text.match(/(?:\+55|55)?\s*\(?([1-9]{2})\)?\s*(9\d{4})[-\s.]*(\d{4})/);
+  if (international) {
+    return `(${international[1]}) ${international[2]}-${international[3]}`;
+  }
+
+  // 3. Padrão 8 ou 9 dígitos com DDD: 75 98123-8602 ou 75981238602
+  const digitsOnly = text.replace(/\D/g, '');
+  if ((digitsOnly.length === 11 || digitsOnly.length === 10) && !/^(19|20)\d{2}(19|20)\d{2}/.test(digitsOnly)) {
+    const ddd = digitsOnly.slice(0, 2);
+    const rest = digitsOnly.slice(2);
+    if (rest.length === 9) {
+      return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`;
+    } else {
+      return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`;
+    }
+  }
+
+  return '';
 }
 
 /**
@@ -69,18 +104,21 @@ export function normalizeCity(cityInput: any): string {
  */
 export function normalizePhone(phoneInput: any): string {
   if (!phoneInput || typeof phoneInput !== 'string') return '';
+  const extracted = extractValidBrazilianPhone(phoneInput);
+  if (extracted) return extracted;
+
   const digits = phoneInput.replace(/\D/g, '');
+  // Rejeita sequências que são anos duplicados como 20262026
+  if (/^(19|20)\d{2}(19|20)\d{2}/.test(digits)) {
+    return '';
+  }
 
   if (digits.length === 11) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   } else if (digits.length === 10) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  } else if (digits.length === 13 && digits.startsWith('55')) {
-    const d = digits.slice(2);
-    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   }
-  return phoneInput.trim();
+  return '';
 }
 
 /**
@@ -310,22 +348,27 @@ export function sanitizeImportedResumeData(data: any, rawTextFallback: string = 
     cleanJobTitle = '';
   }
 
-  // Limpeza de resumo (remover cabeçalhos residuais como "SÍNTESE DE QUALIFICAÇÕES")
+  // Limpeza de resumo
   let cleanSummary = cleanWatermarks(data.summary || data.qualificationSummary || data.resumo || '').trim();
   cleanSummary = cleanSummary
     .replace(/^(?:SÍNTESE(?:\s+DE\s+QUALIFICAÇÕES)?|RESUMO(?:\s+PROFISSIONAL)?|PERFIL(?:\s+PROFISSIONAL)?|SOBRE\s+MIM)[\s:.]*/i, '')
     .trim();
 
-  // Se o resumo começou com o nome e contatos do próprio candidato (caso de agrupamento incorreto no PDF), limpar o início
   if (cleanName && cleanSummary.startsWith(cleanName)) {
     cleanSummary = cleanSummary.slice(cleanName.length).replace(/^[•\s\-,–/]+/, '').trim();
+  }
+
+  // Extração de telefone com prioridade para texto bruto caso o dado venha corrompido
+  let finalPhone = normalizePhone(data.phone || data.phone1 || data.whatsapp);
+  if (!finalPhone && rawTextFallback) {
+    finalPhone = extractValidBrazilianPhone(rawTextFallback);
   }
 
   const result: Partial<ResumeData> = {
     name: cleanName,
     jobTitle: cleanJobTitle,
-    email: normalizeEmail(data.email),
-    phone: normalizePhone(data.phone || data.phone1 || data.whatsapp),
+    email: normalizeEmail(data.email || (rawTextFallback.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0])),
+    phone: finalPhone,
     state: normalizeState(data.state || data.uf),
     city: normalizeCity(data.city || data.cidade),
     birthDate: String(data.birthDate || data.birth || data.age || '').trim(),

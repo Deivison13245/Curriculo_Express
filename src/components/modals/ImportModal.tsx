@@ -4,6 +4,7 @@ import { Upload, FileText, CheckCircle2, Sparkles, Palette, ExternalLink, Clipbo
 import { parseResumeTextWithAI, parseResumeFileWithAI } from '../../services/aiService';
 import { extractTextFromPdf, renderPdfPageToBase64 } from '../../services/pdfService';
 import { sanitizeImportedResumeData } from '../../utils/resumeSanitizer';
+import { getMunicipiosByUF, findMatchingCity } from '../../services/ibgeService';
 import type { ResumeData } from '../../types';
 
 interface ImportModalProps {
@@ -23,6 +24,20 @@ export default function ImportModal({ onClose, onImportData, onOpenCanva }: Impo
 
   async function applyExtractedData(extracted: any, rawFallback: string = '') {
     const sanitized = sanitizeImportedResumeData(extracted, rawFallback);
+
+    if (sanitized.state && sanitized.city) {
+      try {
+        const cities = await getMunicipiosByUF(sanitized.state);
+        if (cities && cities.length > 0) {
+          const matched = findMatchingCity(sanitized.city, cities);
+          if (matched) {
+            sanitized.city = matched;
+          }
+        }
+      } catch (e) {
+        console.warn('[ImportModal] Falha ao normalizar cidade via IBGE:', e);
+      }
+    }
 
     setLoading(false);
     setSuccess(true);

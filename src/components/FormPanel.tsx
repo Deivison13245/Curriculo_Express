@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type {
   ResumeData,
   Education,
@@ -36,6 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import { BRAZIL_STATES, getCitiesForState } from '../data/brazilLocations';
+import { getMunicipiosByUF, findMatchingCity } from '../services/ibgeService';
 
 function formatPhone(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -283,11 +284,47 @@ export default function FormPanel({
   const [customSoftSkillInput, setCustomSoftSkillInput] = useState('');
   const [customTechInput, setCustomTechInput] = useState('');
   const [isCustomCity, setIsCustomCity] = useState(false);
+  const [ibgeCities, setIbgeCities] = useState<string[]>([]);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [techCategoryTab, setTechCategoryTab] = useState('all');
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const projectPdfRef = useRef<HTMLInputElement>(null);
   const [activeProjectPdfId, setActiveProjectPdfId] = useState<string | null>(null);
+
+  // Carrega cidades do IBGE dinamicamente ao trocar de estado
+  useEffect(() => {
+    let isMounted = true;
+    if (!data.state) {
+      setIbgeCities([]);
+      return;
+    }
+
+    const staticList = getCitiesForState(data.state);
+    setIbgeCities(staticList);
+
+    setIsLoadingCities(true);
+    getMunicipiosByUF(data.state)
+      .then((cities) => {
+        if (isMounted && cities && cities.length > 0) {
+          setIbgeCities(cities);
+          // Se já houver uma cidade (ex: importada via PDF ou digitada sem acento), normaliza para a oficial
+          if (data.city) {
+            const matched = findMatchingCity(data.city, cities);
+            if (matched && matched !== data.city) {
+              update({ city: matched });
+            }
+          }
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingCities(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [data.state]);
 
   function toggleSection(sec: string) {
     setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
@@ -426,7 +463,7 @@ export default function FormPanel({
     update({ projects: next });
   }
 
-  const citiesList = getCitiesForState(data.state);
+  const citiesList = ibgeCities.length > 0 ? ibgeCities : getCitiesForState(data.state);
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 pb-24">
@@ -556,10 +593,17 @@ export default function FormPanel({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Cidade *
-              </label>
-              {data.state && citiesList.length > 0 ? (
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-gray-700">
+                  Cidade *
+                </label>
+                {isLoadingCities && (
+                  <span className="text-[10px] text-[#004A8D] font-medium animate-pulse">
+                    Buscando cidades no IBGE...
+                  </span>
+                )}
+              </div>
+              {data.state ? (
                 isCustomCity ? (
                   <div className="space-y-1">
                     <input
@@ -573,11 +617,10 @@ export default function FormPanel({
                       type="button"
                       onClick={() => {
                         setIsCustomCity(false);
-                        update({ city: '' });
                       }}
                       className="text-[11px] text-[#004A8D] hover:underline font-semibold"
                     >
-                      ← Voltar para seleção da lista
+                      ← Voltar para seleção da lista ({citiesList.length} cidades)
                     </button>
                   </div>
                 ) : (
@@ -586,8 +629,8 @@ export default function FormPanel({
                     onChange={(e) => {
                       if (e.target.value === 'OUTRA') {
                         setIsCustomCity(true);
-                        update({ city: '' });
                       } else {
+                        setIsCustomCity(false);
                         update({ city: e.target.value });
                       }
                     }}
@@ -605,10 +648,9 @@ export default function FormPanel({
               ) : (
                 <input
                   type="text"
-                  placeholder={data.state ? 'Digite sua cidade' : 'Selecione o Estado primeiro'}
-                  value={data.city}
-                  onChange={(e) => update({ city: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:border-[#004A8D] focus:ring-2 focus:ring-[#004A8D]/20 placeholder-gray-400 transition-all duration-200 shadow-2xs"
+                  placeholder="Selecione o Estado primeiro"
+                  disabled
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-400 bg-gray-100/70 cursor-not-allowed shadow-2xs"
                 />
               )}
             </div>
