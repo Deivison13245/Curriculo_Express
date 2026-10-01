@@ -255,7 +255,8 @@ export function exportToWord(data: ResumeData) {
   });
 
   // Trigger browser file download
-  const fileName = `Curriculo_${(data.name || 'Profissional').trim().replace(/[^a-zA-Z0-9_-]/g, '_')}.doc`;
+  const cleanName = (data.name || '').trim().replace(/[\\/:*?"<>|]/g, '_');
+  const fileName = cleanName ? `${cleanName}.doc` : 'Curriculo_Profissional.doc';
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = fileName;

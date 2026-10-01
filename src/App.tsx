@@ -136,6 +136,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Atualiza dinamicamente o título da página com o Nome Completo da pessoa (define o nome do arquivo PDF gerado pelo navegador)
+  useEffect(() => {
+    if (data.name && data.name.trim()) {
+      document.title = data.name.trim();
+    } else {
+      document.title = 'Currículo Express - Senac T.D.S.';
+    }
+  }, [data.name]);
+
   function addToast(message: string, type: Toast['type'] = 'success') {
     const id = Math.random().toString(36).slice(2);
     setToasts((t) => [...t, { id, message, type }]);
@@ -146,7 +155,11 @@ export default function App() {
   }, []);
 
   function handlePrint() {
-    // Automatically switch to preview tab so only the A4 resume prints!
+    // Garante que o título seja exatamente o Nome Completo da pessoa ao imprimir/salvar em PDF
+    const candidateName = data.name && data.name.trim() ? data.name.trim() : 'Curriculo';
+    document.title = candidateName;
+
+    // Muda para a aba de pré-visualização para imprimir apenas a folha A4 limpa
     setActiveTab('preview');
     setTimeout(() => {
       window.print();
